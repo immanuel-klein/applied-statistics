@@ -1,0 +1,161 @@
+---
+title: "Exercis01"
+format: html
+editor: visual
+---
+
+```{r}
+library("tidyverse")
+library("ggplot2")
+```
+
+# 1 Sample statistics
+
+[Data set](https://doi.org/10.24432/C56S3T)
+
+## Exercise (a)
+
+Reading the data into R.
+
+```{r}
+#Reading the whole data set
+winequality.white <- read.csv("wine+quality/winequality-white.csv", sep = ";")
+
+#Using only volatile.acidity and residual.sugar and adding binary variable good which is 1 if quality > 5 and 0 otherwise.
+working.df <- winequality.white %>%
+  mutate(good = ifelse(quality > 5, 1, 0)) %>%
+  select(volatile.acidity, residual.sugar, good)
+
+head(working.df)
+```
+
+## Exercise (b)
+
+### Histograms
+
+Plotting histograms of residual.sugar for good and bad wines using different methods available in R to choose the bin width.
+
+#### Default
+
+```{r}
+#Plotting the histogram with the default bin width
+ggplot(working.df) +
+  aes(x = residual.sugar, fill = factor(good)) +
+  geom_histogram(position = "identity", alpha = 0.5) + 
+  labs(title = "Histogram of Residual Sugar (default bin width)", 
+       x = "Residual Sugar", 
+       y = "Frequency", 
+       fill = "Good Wine")
+```
+
+#### Sturge's Choice
+
+To-Do: binwidth mit pipe statt base R formulieren.
+
+```{r}
+#Plotting the histogram with Sturge's bin width
+ggplot(working.df) +
+  aes(x = residual.sugar, fill = factor(good)) + 
+  geom_histogram(position = "identity", alpha = 0.5, 
+                 binwidth = diff(range(new_df$residual.sugar)) /
+                              (1 + log2(length(new_df$residual.sugar)))) + 
+  labs(title = "Histogram of Residual Sugar (Sturge's bin width)", 
+       x = "Residual Sugar", 
+       y = "Frequency", 
+       fill = "Good Wine")
+```
+
+#### Freedman-Diaconis' Choice
+
+```{r}
+#Plotting the histogram with Freedman-Diaconis' bin width
+ggplot(working.df) +
+  aes(x = residual.sugar, fill = factor(good)) +
+  geom_histogram(position = "identity", alpha = 0.5, 
+                 binwidth = 2 * IQR(new_df$residual.sugar) / 
+                               (length(new_df$residual.sugar)^(1/3))) + 
+  labs(title = "Histogram of Residual Sugar (Freedman-Diaconis' bin width)", 
+       x = "Residual Sugar", 
+       y = "Frequency", 
+       fill = "Good Wine")
+```
+
+#### Analysis
+
+With rising residual sugar there are both less good and bad wines. That could be because in the data set wines that have higher residual sugar are less represented or simply because there are generally less wines with a lot of residual sugar in the population. Also: bad wines seem to have "spike" again in the mid range for residual sugar.
+
+To-Do: Mehr schreiben.
+
+### Summary Statistics
+
+```{r}
+summary_stats <- working.df %>%
+  group_by(good) %>%
+  summarise(
+    "Mean" = mean(residual.sugar, na.rm = TRUE),
+    "Median" = median(residual.sugar, na.rm = TRUE),
+    "Standard Deviation" = sd(residual.sugar, na.rm = TRUE),
+    "IQR" = IQR(residual.sugar, na.rm = TRUE),
+    "min" = min(residual.sugar, na.rm = TRUE),
+    "max" = max(residual.sugar, na.rm = TRUE)
+  )
+
+summary_stats
+```
+
+Bad wine seems to have more sugar with also a higher IQR. It looks like good wines have more outliers or at least one looking at the max value.
+
+To-Do: Mehr schreiben
+
+### Boxplots
+
+```{r}
+boxplot <- ggplot(working.df) +
+  aes(x = factor(good), y = residual.sugar) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Residual Sugar by Wine Quality", 
+       x = "Wine Quality", 
+       y = "Residual Sugar")
+
+boxplot
+```
+
+Outliers for good wines!
+
+### QQ-Plot
+
+```{r}
+residual.sugar.good <- working.df %>% filter(good == 1) %>% pull(residual.sugar)
+residual.sugar.bad <- working.df %>% filter(good == 0) %>% pull(residual.sugar)
+
+xlim.range <- range(residual.sugar.good, residual.sugar.bad)
+ylim.range <- range(residual.sugar.good, residual.sugar.bad)
+
+# Create QQ-plot
+qqplot(residual.sugar.good, residual.sugar.bad,
+       xlab = "Residual Sugar (Good Wines)",
+       ylab = "Residual Sugar (Bad Wines)",
+       main = "QQ-Plot",
+       xlim = xlim.range,
+       ylim = ylim.range)
+abline(0, 1)
+```
+
+Again outliers of good wines!
+
+### Empirical Distribution
+
+```{r}
+working.good <- working.df %>% filter(good == 1)
+working.bad <- working.df %>% filter(good == 0)
+
+ggplot(working.good, aes(x = residual.sugar), color = group) +
+  stat_ecdf(data = working.good, geom = "step", color = "blue", size = 2.5, alpha = 0.5) +
+  stat_ecdf(data = working.bad, geom = "step", color = "red", size = 2.5, alpha = 0.5) +
+  labs(title = "Empirical Distribution Functions of Residual Sugar", 
+       x = "Residual Sugar", 
+       y = "Cumulative Probability",
+       colour = "good") +
+```
+
+To-Do: legende dazufügen!
