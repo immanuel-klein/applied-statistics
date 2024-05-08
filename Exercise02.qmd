@@ -1,0 +1,87 @@
+---
+title: "Exercise02"
+format: html
+editor: visual
+---
+
+```{r}
+library("tidyverse")
+library("ggplot2")
+```
+
+# 2 Examine the distribution
+
+Reading the data:
+
+```{r}
+#Reading the whole data set
+winequality.white <- read.csv("wine+quality/winequality-white.csv", sep = ";")
+
+#Using only volatile.acidity, residual.sugar, and pH and adding binary variable good which is 1 if quality > 5 and 0 otherwise.
+working.df <- winequality.white %>%
+  mutate(good = ifelse(quality > 5, 1, 0)) %>%
+  select(volatile.acidity, residual.sugar, pH, good)
+
+head(working.df)
+```
+
+## Exercise (a)
+
+```{r}
+pH.mean <- working.df %>% pull(pH) %>% mean()
+pH.sd <- working.df %>% pull(pH) %>% sd()
+
+pH.good.mean <- working.df %>% filter(good == 1) %>% pull(pH) %>% mean()
+pH.good.sd <- working.df %>% filter(good == 1) %>% pull(pH) %>% sd()
+
+pH.bad.mean <- working.df %>% filter(good == 0) %>% pull(pH) %>% mean()
+pH.bad.sd <- working.df %>% filter(good == 0) %>% pull(pH) %>% sd()
+
+# Plot histogram of pH for all wines
+ggplot(working.df, aes(x = pH)) +
+  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5) + 
+  labs(title = "Histogram of pH", 
+       x = "pH", 
+       y = "Frequency") + 
+  stat_function(fun = dnorm, 
+                args = c(mean = pH.mean, sd = pH.sd), 
+                color = "red")
+
+ggplot(working.df) +
+  aes(x = pH, fill = factor(good)) +
+  geom_histogram(aes(y = ..density..), position = "identity", alpha = 0.5, bins = 30) + 
+  labs(title = "Histogram of pH", 
+       x = "pH", 
+       y = "Frequency", 
+       fill = "Good Wine") +
+  stat_function(fun = dnorm, 
+                args = c(mean = pH.good.mean, sd = pH.good.sd), 
+                color = "red") +
+  stat_function(fun = dnorm, 
+                args = c(mean = pH.bad.mean, sd = pH.bad.sd), 
+                color = "blue")
+```
+
+To-Do: Bin width!!!
+
+good wines are close to normally distributed, bad wines not so much
+
+## Exercise (b)
+
+```{r}
+pH.good <- working.df %>% filter(good == 1) %>% pull(pH)
+pH.bad <- working.df %>% filter(good == 0) %>% pull(pH)
+pH.All <- working.df %>% pull(pH)
+
+qqnorm(pH.good, main = "QQ: pH of Good Wines against Normal Distr.")
+qqline(pH.good, col = "red")
+
+qqnorm(pH.bad, main = "QQ: pH of Bad Wines against Normal Distr.")
+qqline(pH.bad, col = "red")
+
+qqnorm(pH.All, main = "QQ: pH of All Wines against Normal Distr.")
+qqline(pH.All, col = "red")
+
+plot(ecdf(pH.good), main = "PP: pH of Good Wines", xlab = "pH", ylab = "Cumulative Probability", col = "blue")
+legend("bottomright", legend = c("Empirical", "Theoretical"), col = c("blue", "red"), pch = c(1, 1))
+```
