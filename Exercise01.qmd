@@ -41,7 +41,7 @@ Plotting histograms of residual.sugar for good and bad wines using different met
 #Plotting the histogram with the default bin width
 ggplot(working.df) +
   aes(x = residual.sugar, fill = factor(good)) +
-  geom_histogram(position = "identity", alpha = 0.5) + 
+  geom_histogram(position = "identity", alpha = 0.5, bins = 30) + 
   labs(title = "Histogram of Residual Sugar (default bin width)", 
        x = "Residual Sugar", 
        y = "Frequency", 
