@@ -71,17 +71,92 @@ good wines are close to normally distributed, bad wines not so much
 ```{r}
 pH.good <- working.df %>% filter(good == 1) %>% pull(pH)
 pH.bad <- working.df %>% filter(good == 0) %>% pull(pH)
-pH.All <- working.df %>% pull(pH)
+pH.all <- working.df %>% pull(pH)
 
-qqnorm(pH.good, main = "QQ: pH of Good Wines against Normal Distr.")
-qqline(pH.good, col = "red")
+#QQ-Plots:
+ggplot(data.frame(pH = pH.good), aes(sample = pH)) +
+  geom_qq() +
+  geom_qq_line(col = "red") +
+  labs(x = "Theoretical Quantiles",
+       y = "Empirical Quantiles",
+       title = "QQ: pH of Good Wines against Normal Distr.")
 
-qqnorm(pH.bad, main = "QQ: pH of Bad Wines against Normal Distr.")
-qqline(pH.bad, col = "red")
+ggplot(data.frame(pH = pH.bad), aes(sample = pH)) +
+  geom_qq() +
+  geom_qq_line(col = "red") +
+  labs(x = "Theoretical Quantiles",
+       y = "Empirical Quantiles",
+       title = "QQ: pH of Bad Wines against Normal Distr.")
 
-qqnorm(pH.All, main = "QQ: pH of All Wines against Normal Distr.")
-qqline(pH.All, col = "red")
+ggplot(data.frame(pH = pH.all), aes(sample = pH)) +
+  geom_qq() +
+  geom_qq_line(col = "red") +
+  labs(x = "Theoretical Quantiles",
+       y = "Empirical Quantiles",
+       title = "QQ: pH of All Wines against Normal Distr.")
 
-plot(ecdf(pH.good), main = "PP: pH of Good Wines", xlab = "pH", ylab = "Cumulative Probability", col = "blue")
-legend("bottomright", legend = c("Empirical", "Theoretical"), col = c("blue", "red"), pch = c(1, 1))
+#Data-Prep for PP-Plots
+ecdf.pH.all <- ecdf(sort(pH.all))
+norm.all <- pnorm(sort(pH.All), mean(pH.all), sd = sd(pH.all))
+
+ecdf.pH.good <- ecdf(sort(pH.good))
+norm.good <- pnorm(sort(pH.good), mean(pH.good), sd = sd(pH.good))
+
+ecdf.pH.bad <- ecdf(sort(pH.bad))
+norm.bad <- pnorm(sort(pH.bad), mean(pH.bad), sd = sd(pH.bad))
+
+#PP-Plots
+ggplot(data.frame(norm.all, ecdf.pH.all(sort(pH.all))), 
+       aes(x = norm.all, y = ecdf.pH.all(sort(pH.all)))) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red") +
+  labs(x = "Theoretical Probabilities",
+       y = "Empirical Probabilities",
+       title = "PP: pH of All Wines against Normal Distr.")
+
+ggplot(data.frame(norm.good, ecdf.pH.good(sort(pH.good))), 
+       aes(x = norm.good, y = ecdf.pH.good(sort(pH.good)))) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red") +
+  labs(x = "Theoretical Probabilities",
+       y = "Empirical Probabilities",
+       title = "PP: pH of Good Wines against Normal Distr.")
+
+ggplot(data.frame(norm.bad, ecdf.pH.bad(sort(pH.bad))), 
+       aes(x = norm.bad, y = ecdf.pH.bad(sort(pH.bad)))) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red") +
+  labs(x = "Theoretical Probabilities",
+       y = "Empirical Probabilities",
+       title = "PP: pH of Bad Wines against Normal Distr.")
 ```
+
+## Exercise (c)
+
+```{r}
+library("sfsmisc")
+pH.good <- working.df %>% filter(good == 1) %>% pull(pH)
+pH.bad <- working.df %>% filter(good == 0) %>% pull(pH)
+pH.all <- working.df %>% pull(pH)
+
+ecdf.ksCI(pH.all)
+ggplot(data.frame(pH = pH.all), aes(x = pH)) +
+  stat_ecdf() +
+  labs(title = "Empirical Distribution Functions of pH for All Wines", 
+       x = "pH", 
+       y = "Cumulative Probability")
+
+ggplot(data.frame(pH = pH.good), aes(x = pH)) +
+  stat_ecdf() +
+  labs(title = "Empirical Distribution Functions of pH for Good Wines", 
+       x = "pH", 
+       y = "Cumulative Probability")
+
+ggplot(data.frame(pH = pH.bad), aes(x = pH)) +
+  stat_ecdf() +
+  labs(title = "Empirical Distribution Functions of pH for Bad Wines", 
+       x = "pH", 
+       y = "Cumulative Probability")
+```
+
+Confidence bands fehlen noch
