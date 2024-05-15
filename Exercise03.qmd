@@ -1,0 +1,141 @@
+---
+title: "Exercise03"
+format: html
+editor: visual
+---
+
+```{r}
+library("tidyverse")
+library("ggplot2")
+library("rmutil")
+```
+
+# 3 Maximum likelihood estimation
+
+## Exercise (a)
+
+![](images/Screenshot%202024-05-15%20at%2017.09.29.png){width="529"}
+
+For uniqueness the same holds for the MLE as for the median: If the sample size is uneven, it is unique. If it is even, any number between the two middle values suffices.
+
+## Exercise (b)
+
+```{r}
+# Set parameters
+n <- 20
+# n <- 1000 # Uncomment to use n = 1000
+mu <- 1
+sigma <- 1 
+set.seed(123)  # for reproducibility
+x <- rlaplace(n, mu, sigma)
+t <- 8
+#t <- 7 # Uncomment to use type 7
+#t <- 4 # Uncomment to use type 4
+
+?quantile #look up the different values of type
+est <- quantile(x, probs = 0.5, type = t)  # type 8: approximately median
+est
+```
+
+Most suitable is type 7 because it approximates the median whereas e. g. 7 provides the mode. A Laplace distr. with mean and sd = 1 is symmetric around 1 -\> Mean and median are equal, mode too if the exact value of the mean is represented in the sample (All depends a bit on definition
+
+For larger sample size the estimate gets more accurate, closer to 1 if median (type 8) is used.
+
+## Exercise (c)
+
+```{r}
+
+likelihood <- function(mu, data) {
+  sigma <- sd(data)
+  l <- prod(exp((-1)*abs(data-mu)/sigma)/(2*sigma))
+  l
+}
+
+mle <- function(data) {
+  result <- optimize(likelihood, interval = range(data), data = data, maximum = TRUE)
+  result$maximum
+}
+
+set.seed(123)
+sample1 <- rlaplace(20, 1, 1)
+sample2 <- rlaplace(1000, 1, 1)
+
+mle1.custom <- mle(sample1)
+mle2.custom <- mle(sample2)
+
+mle1.quantile <- quantile(sample1, probs = 0.5, type = 7)
+mle2.quantile <- quantile(sample2, probs = 0.5, type = 7)
+
+# Output results
+print("MLE for n = 20:")
+print(paste("Custom function:", mle1.custom))
+print(paste("Quantile function:", mle1.quantile))
+print("MLE for n = 1000:")
+print(paste("Custom function:", mle2.custom))
+print(paste("Quantile function:", mle2.quantile))
+
+```
+
+For a Newton-Raphson algorithm, we need the derivative of the function. However, in this case, it's not straightforward to obtain a closed-form expression for the derivative
+
+For higher sample sizes, the custom estimator gets really bad results. Why?
+
+## Exercise (d)
+
+```{r}
+
+generate.mles <- function(n) {
+  mles <- numeric(5000)
+  for (i in 1:5000) {
+    sample <- rlaplace(n, 1, 1)
+    mles[i] <- mle(sample)
+  }
+  var(mles)
+}
+
+set.seed(123)
+variance.n20 <- generate.mles(20)
+variance.n1000 <- generate.mles(1000)
+
+print("Variance of MLE for n = 20:")
+print(variance.n20)
+print("Variance of MLE for n = 1000:")
+print(variance.n1000)
+
+set.seed(123)
+mles.n20 <- replicate(5000, mle(rlaplace(20, 1, 1)))
+df.n20 <- data.frame(mle = mles.n20)
+# Histogram
+ggplot(df.n20, aes(x = mle)) +
+  geom_histogram(binwidth = 0.1) +
+  labs(title = paste("Histogram of MLE for n =", 20),
+       x = "MLE", 
+       y = "Frequency")
+# QQ plot
+ggplot(df.n20, aes(sample = mle)) +
+  geom_qq() +
+  geom_qq_line(color = "red") +
+  labs(title = paste("QQ Plot of MLE for n =", 20),
+       x = "Theoretical Quantiles", 
+       y = "Sample Quantiles")
+
+set.seed(123)
+mles.n1000 <- replicate(5000, mle(rlaplace(1000, 1, 1)))
+df.n1000 <- data.frame(mle = mles.n1000)
+# Histogram
+ggplot(df.n1000, aes(x = mle)) +
+  geom_histogram(binwidth = 0.1) +
+  labs(title = paste("Histogram of MLE for n =", 1000),
+       x = "MLE", 
+       y = "Frequency")
+# QQ plot
+ggplot(df.n1000, aes(sample = mle)) +
+  geom_qq() +
+  geom_qq_line(color = "red") +
+  labs(title = paste("QQ Plot of MLE for n =", 1000),
+       x = "Theoretical Quantiles", 
+       y = "Sample Quantiles")
+
+```
+
+To-Do: Text + normalverteilung kurve zu histograms hinzufügen
