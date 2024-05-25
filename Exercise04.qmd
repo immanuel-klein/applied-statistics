@@ -5,23 +5,35 @@ format: html
 editor: visual
 ---
 
-## Quarto
+# Linear Regression
 
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+Reading the data into R:
 
 ```{r}
-1 + 1
+house.data <- read.csv("kc_house_data.csv")
 ```
 
-You can add options to executable code like this
+## (a)
+
+### Model Estimation
 
 ```{r}
-#| echo: false
-2 * 2
+model_a <- lm(house.data$price ~ house.data$bedrooms + house.data$bathrooms + house.data$sqft_living + house.data$floors 
+              + house.data$view + house.data$condition + house.data$grade + house.data$yr_built)
+
+summary(model_a)
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+All variables in the model are significant. **R² = 0.6359**, which indicates that **63.59%** of the variance of the variable price is explained by the chosen covariates.
+
+### Residual Analysis
+
+#### Linearity
+
+#### Homoscedasticity
+
+#### Normality
+
+#### Independence
+
+#### No Multicollinearity
