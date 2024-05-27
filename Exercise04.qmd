@@ -1,7 +1,7 @@
 ---
 title: "Exercise04"
 author: "Manuel Bauder"
-format: html
+format: pdf
 editor: visual
 ---
 
