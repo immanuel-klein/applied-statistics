@@ -1,5 +1,6 @@
 ---
 title: "Exercise02"
+author: "Immanuel Klein"
 format: html
 editor: visual
 ---
@@ -39,7 +40,7 @@ pH.bad.sd <- working.df %>% filter(good == 0) %>% pull(pH) %>% sd()
 
 # Plot histogram of pH for all wines
 ggplot(working.df, aes(x = pH)) +
-  geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5) + 
+  geom_histogram(aes(y = after_stat(density)), bins = 30, alpha = 0.5) + 
   labs(title = "Histogram of pH", 
        x = "pH", 
        y = "Frequency") + 
@@ -49,7 +50,10 @@ ggplot(working.df, aes(x = pH)) +
 
 ggplot(working.df) +
   aes(x = pH, fill = factor(good)) +
-  geom_histogram(aes(y = ..density..), position = "identity", alpha = 0.5, bins = 30) + 
+  geom_histogram(aes(y = after_stat(density)), 
+                 position = "identity", 
+                 alpha = 0.5, 
+                 bins = 30) + 
   labs(title = "Histogram of pH", 
        x = "pH", 
        y = "Frequency", 
@@ -62,9 +66,11 @@ ggplot(working.df) +
                 color = "blue")
 ```
 
-To-Do: Bin width!!!
+The distributions of good and bad wines deviate from their normal distributions in the following ways:
 
-good wines are close to normally distributed, bad wines not so much
+-   **Good Wines:** The histogram is quite similar to the normal distribution, suggesting that the pH values of good wines are approximately normally distributed.
+
+-   **Bad Wines:** The histogram has a higher peak than the normal distribution and is slightly right-skewed compared to the normal density.
 
 ## Exercise (b)
 
@@ -97,7 +103,7 @@ ggplot(data.frame(pH = pH.all), aes(sample = pH)) +
 
 #Data-Prep for PP-Plots
 ecdf.pH.all <- ecdf(sort(pH.all))
-norm.all <- pnorm(sort(pH.All), mean(pH.all), sd = sd(pH.all))
+norm.all <- pnorm(sort(pH.all), mean(pH.all), sd = sd(pH.all))
 
 ecdf.pH.good <- ecdf(sort(pH.good))
 norm.good <- pnorm(sort(pH.good), mean(pH.good), sd = sd(pH.good))
@@ -131,32 +137,171 @@ ggplot(data.frame(norm.bad, ecdf.pH.bad(sort(pH.bad))),
        title = "PP: pH of Bad Wines against Normal Distr.")
 ```
 
+QQ-plots compare the quantiles of the sample data to the quantiles of a theoretical distribution, in this case the normal distribution, whereas PP-plots compare the ecdfs of the sample data and the theoretical distribution. For both holds: If the data follows the theoretical distribution, the points should lie approximately along a straight line.
+
+Here are some key observations that are also in line with what has already been mentioned in Exercise (a):
+
+**Good Wines:**
+
+-   **PP-Plot**: The PP-plot looks good, very close to the normal distribution, indicating a high goodness-of-fit overall.
+
+-   **QQ-Plot**: There is an upwards curve in the tails, indicating heavier tails with more extreme values (outliers) than the theoretical distribution.
+
+**Bad Wines:**
+
+-   **PP-Plot**: The PP-plot shows some deviation from the straight line, indicating a less perfect fit.
+
+-   **QQ-Plot**: Points deviate above the line in the upper tail but follow the line in the lower tail, suggesting that the sample data is right-skewed.
+
+**All Wines:**
+
+-   **PP-Plot**: Again, the PP-plot shows some deviation from the straight line, indicating a less perfect fit.
+
+-   **QQ-Plot**: There are slightly heavy tails, more pronounced in the upper tail, likely due to the skewness of the bad wines.
+
 ## Exercise (c)
 
 ```{r}
-library("sfsmisc")
+# Function to calculate ecdf and confidence intervals
+ecdf.with.ci <- function(data, alpha = 0.05) {
+  n <- length(data)
+  ecdf.fn <- ecdf(data)
+  x.vals <- sort(data)
+  ecdf.vals <- ecdf.fn(x.vals)
+  se <- sqrt(ecdf.vals * (1 - ecdf.vals) / n)
+  z <- qnorm(1 - alpha / 2)
+  lower.ci <- pmax(ecdf.vals - z * se, 0)
+  upper.ci <- pmin(ecdf.vals + z * se, 1)
+  
+  data.frame(
+    x = x.vals,
+    ecdf = ecdf.vals,
+    lower.ci = lower.ci,
+    upper.ci = upper.ci
+  )
+}
+
 pH.good <- working.df %>% filter(good == 1) %>% pull(pH)
 pH.bad <- working.df %>% filter(good == 0) %>% pull(pH)
 pH.all <- working.df %>% pull(pH)
 
-ecdf.ksCI(pH.all)
-ggplot(data.frame(pH = pH.all), aes(x = pH)) +
-  stat_ecdf() +
-  labs(title = "Empirical Distribution Functions of pH for All Wines", 
+pH.good <- working.df %>% filter(good == 1) %>% pull(pH)
+pH.bad <- working.df %>% filter(good == 0) %>% pull(pH)
+pH.all <- working.df %>% pull(pH)
+
+ecdf.all <- ecdf.with.ci(pH.all)
+ecdf.good <- ecdf.with.ci(pH.good)
+ecdf.bad <- ecdf.with.ci(pH.bad)
+
+# Plot all wines
+ggplot(ecdf.all, aes(x = x, y = ecdf)) +
+  geom_step() +
+  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.5, fill = "red") +
+  labs(title = "Empirical Distribution Functions of pH for All Wines",
        x = "pH", 
        y = "Cumulative Probability")
 
-ggplot(data.frame(pH = pH.good), aes(x = pH)) +
-  stat_ecdf() +
+# Plot good wines
+ggplot(ecdf.good, aes(x = x, y = ecdf)) +
+  geom_step() +
+  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.5, fill = "red") +
   labs(title = "Empirical Distribution Functions of pH for Good Wines", 
        x = "pH", 
        y = "Cumulative Probability")
 
-ggplot(data.frame(pH = pH.bad), aes(x = pH)) +
-  stat_ecdf() +
+# Plot bad wines
+ggplot(ecdf.bad, aes(x = x, y = ecdf)) +
+  geom_step() +
+  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.5, fill = "red") +
+  labs(title = "Empirical Distribution Functions of pH for Bad Wines", 
+       x = "pH", 
+       y = "Cumulative Probability")
+
+```
+
+## Exercise (d)
+
+```{r}
+# Function to calculate ecdf and uniform confidence intervals using KS method
+ecdf.with.ks.ci <- function(data, alpha = 0.05) {
+  n <- length(data)
+  ecdf.fn <- ecdf(data)
+  x.vals <- sort(data)
+  ecdf.vals <- ecdf.fn(x.vals)
+  
+  ks.critical.value <- sqrt(-0.5 * log(alpha / 2) / n)
+  
+  lower.ci <- pmax(ecdf.vals - ks.critical.value, 0)
+  upper.ci <- pmin(ecdf.vals + ks.critical.value, 1)
+  
+  data.frame(
+    x = x.vals,
+    ecdf = ecdf.vals,
+    lower.ci = lower.ci,
+    upper.ci = upper.ci
+  )
+}
+
+# From this line on: same code as in Exercise (c)
+
+pH.good <- working.df %>% filter(good == 1) %>% pull(pH)
+pH.bad <- working.df %>% filter(good == 0) %>% pull(pH)
+pH.all <- working.df %>% pull(pH)
+
+pH.good <- working.df %>% filter(good == 1) %>% pull(pH)
+pH.bad <- working.df %>% filter(good == 0) %>% pull(pH)
+pH.all <- working.df %>% pull(pH)
+
+ecdf.all <- ecdf.with.ci(pH.all)
+ecdf.good <- ecdf.with.ci(pH.good)
+ecdf.bad <- ecdf.with.ci(pH.bad)
+
+# Plot all wines
+ggplot(ecdf.all, aes(x = x, y = ecdf)) +
+  geom_step() +
+  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.5, fill = "red") +
+  labs(title = "Empirical Distribution Functions of pH for All Wines",
+       x = "pH", 
+       y = "Cumulative Probability")
+
+# Plot good wines
+ggplot(ecdf.good, aes(x = x, y = ecdf)) +
+  geom_step() +
+  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.5, fill = "red") +
+  labs(title = "Empirical Distribution Functions of pH for Good Wines", 
+       x = "pH", 
+       y = "Cumulative Probability")
+
+# Plot bad wines
+ggplot(ecdf.bad, aes(x = x, y = ecdf)) +
+  geom_step() +
+  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.5, fill = "red") +
   labs(title = "Empirical Distribution Functions of pH for Bad Wines", 
        x = "pH", 
        y = "Cumulative Probability")
 ```
 
-Confidence bands fehlen noch
+Remark: There is no difference between the pointwise and uniform confidence bands because the calculation is not correct yet!
+
+## Exercise (d)
+
+```{r}
+# Cell only works with the cells above run.
+# Combine good and bad data for plotting
+combined.data <- rbind(
+  mutate(ecdf.good, type = "Good"),
+  mutate(ecdf.bad, type = "Bad")
+)
+
+# Plot ECDF with confidence intervals for good and bad wines
+ggplot(combined.data, aes(x = x, y = ecdf, color = type)) +
+  geom_step() +
+  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.2) +
+  labs(title = "Empirical Distribution Functions of pH for Good and Bad Wines",
+       x = "pH", 
+       y = "Cumulative Probability",
+       color = "Wine Type") +
+  scale_color_manual(values = c("Good" = "blue", "Bad" = "red"))
+```
+
+Remark: There is no difference between the pointwise and uniform confidence bands because the calculation is not correct yet!
