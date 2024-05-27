@@ -251,8 +251,6 @@ The summary statistics suggest that good wines have lower volatile acidity on av
 
 -   **QQ Plots:** Good wines shows consistently lower values compared to bad wines for the same quantiles resulting in all points being above the diagonal.
 
-<!-- -->
-
 -   **ECDFs:** Good wines' ECDF start to rise at a lower value.
 
 Lower volatile acidity seems to be associated with higher quality wines, as could have been expected.
