@@ -5,6 +5,14 @@ format: html
 editor: visual
 ---
 
+```{r}
+#install.packages("lmtest")
+#install.packages("ggplot2")
+
+library(ggplot2)
+library(lmtest)
+```
+
 # Linear Regression
 
 Reading the data into R:
@@ -28,12 +36,201 @@ All variables in the model are significant. **R² = 0.6359**, which indicates th
 
 ### Residual Analysis
 
+```{r}
+plot(model_a)
+```
+
 #### Linearity
 
-#### Homoscedasticity
+The plot "Residuals vs. Fitted values" indicates if the relationship between the predictors and the outcome variable is linear or not. The residuals should be randomly scattered around the horizontal line (y=0) with now visual pattern like a curve. That would indicate a non-linear relationship.
+
+In this model, a linear relationship can be assumed.
 
 #### Normality
 
-#### Independence
+The Q-Q Plot indicates if the residuals are normally distributed. For a normal distribution, the points should nearly follow the diagonal line.
 
-#### No Multicollinearity
+In this model, this is not the case. In particular the right tail is deviating from the diagonal. Therefore, it can be assumed that the residuals are not normally distribute (positive skewness).
+
+**Linear Model Assumptions**: The normality assumption is violated as the residuals are not normally distributed.
+
+#### Homoscedasticity
+
+The plot "Standardized residuals vs. Fitted values" indicates homoscedasticity. The variance of the residuals should be roughly the same for all levels of fitted values.
+
+In this model, the variance increases with higher values for the fitted values. Therefore, heteroscedasticity can be assumed.
+
+**Linear Model Assumptions**: The homoscedasticity assumption is violated, indicating heteroscedasticity.
+
+## b)
+
+### QQ-Plot and Histogramm
+
+```{r}
+par(mfrow = c(2, 2))
+
+# Plot Histogram of price
+hist(house.data$price, main = "Histogram of Price", xlab = "Price", col = "blue", border = "black")
+
+# Plot Q-Q Plot of price
+qqnorm(house.data$price, main = "Q-Q Plot of Price")
+qqline(house.data$price, col = "red")
+
+# Log-transform the price
+log_price <- log(house.data$price)
+
+# Plot Histogram of log(price)
+hist(log_price, main = "Histogram of Log(Price)", xlab = "Log(Price)", col = "blue", border = "black")
+
+# Plot Q-Q Plot of log(price)
+qqnorm(log_price, main = "Q-Q Plot of Log(Price)")
+qqline(log_price, col = "red")
+
+# Reset the plotting area to default (optional)
+par(mfrow = c(1, 1))
+
+```
+
+**Observation**: In the Histogram of price it becomes visible that most of the data points are concentrated at the lower end of the price scale, indicating that low prices are more common. The Q-Q plot of price shows that the points at the right end of the tail (representing the higher price values) are far away from the diagonal line, indicating that the actual distribution has heavier tails than the normal distribution.
+
+**Interpretation**: The variable price is positively skewed. The log transformation of price is reducing skewness.
+
+### Log transformation of the model
+
+```{r}
+model_b <- lm(log(house.data$price) ~ house.data$bedrooms + house.data$bathrooms + house.data$sqft_living + house.data$floors 
+              + house.data$view + house.data$condition + house.data$grade + house.data$yr_built)
+
+summary(model_b)
+```
+
+All variables in the model are significant. **R² = 0.6426**, which indicates that **64.25%** of the variance of the variable price is explained by the chosen covariates. This R² is higher than in the model where price was not log-transformed. Therefore, in the second model more variance is explained by the predictor variables.
+
+### Residual Analysis
+
+```{r}
+plot(model_b)
+```
+
+The log transformation of price mitigated the effects of positive skewness. The residuals are now more closer to a normal distribution (QQ-plot) and heteroscedasticity is reduced (Standardized residuals vs. Scale-Location plot). Normality and Homoscedasticity assumptions are no longer violated.
+
+This, and a higher R², is a strong indication that the log transformation of price was beneficial for modeling the relationship. The second model is more adequate.
+
+## c)
+
+### Interpretation of parameters
+
+In this model, predictors such as the number of bedrooms and the year built have a negative impact on the log-transformed house prices, while factors such as the number of bathrooms, square footage of living space, number of floors, view rating, condition, and grade have a positive impact.
+
+Price decreasing factors: - For every additional bedroom, the price decreases by approximately 2.366%. - For every additional year, the price decreases by approximately 0.5526%.
+
+Price increasing factors - For every additional bathroom, the price increases by approximately 8.5%. - For every additional square foot of living space, the price increases by approximately 0.01664%. - For every additional floor, the price increases by approximately 8.569%. - For every unit increase in the view rating, the price increases by approximately 6.74%. - For every unit increase in the condition rating, the price increases by approximately 4.226%. - For every unit increase in the grade rating, the price increases by approximately 22.18%
+
+### Linear dependence log(price) \~ covariates
+
+```{r}
+par(mfrow = c(2, 4))
+covariates <- c("bedrooms", "bathrooms", "sqft_living", "floors", "view", "condition", "grade", "yr_built")
+
+for (covariate in covariates) {
+  plot(house.data[[covariate]], log(house.data$price), 
+       main = paste(covariate, "vs log(price)"), 
+       xlab = covariate, ylab = "log(price)",
+       pch = 19, col = "blue")
+  abline(lm(log(price) ~ house.data[[covariate]], data = house.data), col = "red")
+}
+```
+
+```{r}
+par(mfrow = c(2, 4))
+for (covariate in covariates) {
+  model_single <- lm(log(price) ~ house.data[[covariate]], data = house.data)
+  plot(model_single$fitted.values, model_single$residuals, 
+       main = paste(covariate),
+       xlab = "Fitted values", ylab = "Residuals",
+       pch = 19, col = "blue")
+  abline(h = 0, col = "red")
+}
+```
+
+```{r}
+log_price <- log(house.data$price)
+covariates <- c("bedrooms", "bathrooms", "sqft_living", "floors", "view", "condition", "grade", "yr_built")
+
+correlation_results <- sapply(covariates, function(covariate) {
+  cor(house.data[[covariate]], log_price)
+})
+
+correlation_results
+```
+
+Checking the scattered plots with the covariates against the log(price), the residual plots, and the correlation coefficients (cor) are indicating that: - bathrooms, sqft_living, and grade have a clear linear dependence to log(price). - bedrooms, floors, and view have a slight linear dependence to log(price). - condition and yr_built do not have a linear dependence to log(price).
+
+```{r}
+house.data$yr_built_sq <- house.data$yr_built^2
+house.data$sqft_living_sq <- house.data$sqft_living^2
+
+model_c <- lm(log(house.data$price) ~ house.data$bedrooms + house.data$bathrooms + house.data$sqft_living + I(house.data$sqft_living^2) +
+              house.data$floors + house.data$view + house.data$condition + house.data$grade + house.data$yr_built + I(house.data$yr_built^2))
+summary(model_c)
+```
+
+Both squared terms are significant. R² increased from 0.6426 to 0.6492.
+
+## d)
+
+### Model comparison b) and c)
+
+Divide house.data randomly into training and test set:
+
+```{r}
+# Set seed for reproducibility
+set.seed(1122)
+
+# Total number of observations
+n <- nrow(house.data)
+
+# Number of observations for the training set
+n_train <- 10806
+
+# Randomly sample indices for the training set
+train_indices <- sample(1:n, n_train)
+
+# Create the training set
+train_set <- house.data[train_indices, ]
+
+# Create the test set with the remaining indices
+test_set <- house.data[-train_indices, ]
+```
+
+Fit both models on the training set and make predictions on the test set
+
+```{r}
+# Model Fit
+model_b_train <- lm(log(price) ~ bedrooms + bathrooms + sqft_living + floors 
+              + view + condition + grade + yr_built, data = house.data)
+
+model_c_train <- lm(log(price) ~ bedrooms + bathrooms + sqft_living + I(sqft_living^2) +
+              floors + view + condition + grade + yr_built + I(yr_built^2), data = house.data)
+
+# Predictions
+predictions_b <- predict(model_b_train, newdata = test_set)
+predictions_c <- predict(model_c_train, newdata = test_set)
+
+# Calculate mean squared difference
+msd_b <- mean((predictions_b- log(test_set$price))^2)
+msd_c <- mean((predictions_c - log(test_set$price))^2)
+
+cat("Mean Squared Difference for Model 1:", msd_b, "\n")
+cat("Mean Squared Difference for Model 2:", msd_c, "\n")
+```
+
+In this comparison, model_c has a lower prediction error.
+
+### Improve prediction
+
+Continue here
+
+```{r}
+
+```
