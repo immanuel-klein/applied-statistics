@@ -1,5 +1,6 @@
 ---
 title: "Exercise03"
+author: "Immanuel Klein"
 format: html
 editor: visual
 ---
@@ -16,7 +17,11 @@ library("rmutil")
 
 ![](images/Screenshot%202024-05-15%20at%2017.09.29.png){width="529"}
 
-For uniqueness the same holds for the MLE as for the median: If the sample size is uneven, it is unique. If it is even, any number between the two middle values suffices.
+For both MLE and median calculation, the principle of uniqueness applies similarly:
+
+1.  **Uneven Sample Size**: In the case of an odd sample size, there exists a unique solution.
+
+2.  **Even Sample Size**: When the sample size is even, any value within the range of the two middle values is sufficient.
 
 ## Exercise (b)
 
@@ -37,9 +42,9 @@ est <- quantile(x, probs = 0.5, type = t)  # type 8: approximately median
 est
 ```
 
-Most suitable is type 7 because it approximates the median whereas e. g. 7 provides the mode. A Laplace distr. with mean and sd = 1 is symmetric around 1 -\> Mean and median are equal, mode too if the exact value of the mean is represented in the sample (All depends a bit on definition
+Type 7 is the most appropriate choice as it approximates the median, while, for instance, type 7 represents the mode. A Laplace distribution with a mean and standard deviation of 1 exhibits symmetry around 1, resulting in the mean and median being equal. The mode will also align with the mean if the exact mean value is present in the sample, although this depends on the specific definition.
 
-For larger sample size the estimate gets more accurate, closer to 1 if median (type 8) is used.
+As the sample size increases, the estimate becomes more precise, converging towards 1 if the median (type 8) is used.
 
 ## Exercise (c)
 
