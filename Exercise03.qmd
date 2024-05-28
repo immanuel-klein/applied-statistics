@@ -52,11 +52,13 @@ As the sample size increases, the estimate becomes more precise, converging towa
 
 likelihood <- function(mu, data) {
   sigma <- sd(data)
-  l <- prod(exp((-1)*abs(data-mu)/sigma)/(2*sigma))
-  l
+  # log-Likelihood: Product over the data with a given parameter of mu, then logged
+  # -> Same as sum of log of function
+  sum(log(exp((-1)*abs(data-mu)/sigma)/(2*sigma)))
 }
 
 mle <- function(data) {
+  # find the MLE by finding the maximum of the log-Likelihood
   result <- optimize(likelihood, interval = range(data), data = data, maximum = TRUE)
   result$maximum
 }
@@ -81,41 +83,45 @@ print(paste("Quantile function:", mle2.quantile))
 
 ```
 
-For a Newton-Raphson algorithm, we need the derivative of the function. However, in this case, it's not straightforward to obtain a closed-form expression for the derivative
+The R-Documentation for the function optimize states: "The method used is a combination of golden section search and successive parabolic interpolation, and was designed for use with continuous functions." Within a specified range of values the function can determine the point where the function reaches its minimum or maximum.
 
-For higher sample sizes, the custom estimator gets really bad results. Why?
+For a Newton-Raphson algorithm, we need the derivative of the log-likelihood. In this case, we will end up with a sign function in the first derivative. This leads to the first and second derivative being undefined at points where μ equals xi. Consequently, the Newton-Raphson can't be applied practically.​
+
+Both the custom function and the quantile method show similar results, but for small sample sizes, the differences are more pronounced. In these cases, the custom function appears to perform slightly better in finding the MLE.
 
 ## Exercise (d)
 
 ```{r}
-
+# Function for alculating the 5000 MLEs
 generate.mles <- function(n) {
   mles <- numeric(5000)
   for (i in 1:5000) {
     sample <- rlaplace(n, 1, 1)
     mles[i] <- mle(sample)
   }
-  var(mles)
+  mles
 }
 
-set.seed(123)
-variance.n20 <- generate.mles(20)
-variance.n1000 <- generate.mles(1000)
+set.seed(123) # For reproducibility 
+mles.n20 <- generate.mles(20) # Generate the MLEs for n = 20
+mles.n1000 <- generate.mles(1000) # Generate the MLEs for n = 20
 
 print("Variance of MLE for n = 20:")
-print(variance.n20)
+print(var(mles.n20))
 print("Variance of MLE for n = 1000:")
-print(variance.n1000)
+print(var(mles.n1000))
 
-set.seed(123)
-mles.n20 <- replicate(5000, mle(rlaplace(20, 1, 1)))
+# Dataframe for the plots for n = 20 
 df.n20 <- data.frame(mle = mles.n20)
 # Histogram
 ggplot(df.n20, aes(x = mle)) +
-  geom_histogram(binwidth = 0.1) +
+  geom_histogram(bins = 30, aes(y = after_stat(density))) +
+  stat_function(fun = dnorm, 
+                args = list(mean = mean(df.n20$mle), sd = sd(df.n20$mle)), 
+                color = "red", size = 1) +
   labs(title = paste("Histogram of MLE for n =", 20),
        x = "MLE", 
-       y = "Frequency")
+       y = "Density")
 # QQ plot
 ggplot(df.n20, aes(sample = mle)) +
   geom_qq() +
@@ -124,15 +130,17 @@ ggplot(df.n20, aes(sample = mle)) +
        x = "Theoretical Quantiles", 
        y = "Sample Quantiles")
 
-set.seed(123)
-mles.n1000 <- replicate(5000, mle(rlaplace(1000, 1, 1)))
+# Dataframe for the plots for n = 1000
 df.n1000 <- data.frame(mle = mles.n1000)
 # Histogram
 ggplot(df.n1000, aes(x = mle)) +
-  geom_histogram(binwidth = 0.1) +
+  geom_histogram(bins = 30, aes(y = after_stat(density))) +
+  stat_function(fun = dnorm, 
+                args = list(mean = mean(df.n1000$mle), sd = sd(df.n1000$mle)), 
+                color = "red", size = 1) +
   labs(title = paste("Histogram of MLE for n =", 1000),
        x = "MLE", 
-       y = "Frequency")
+       y = "Density")
 # QQ plot
 ggplot(df.n1000, aes(sample = mle)) +
   geom_qq() +
@@ -143,4 +151,6 @@ ggplot(df.n1000, aes(sample = mle)) +
 
 ```
 
-To-Do: Text + normalverteilung kurve zu histograms hinzufügen
+From the variances, we can see that for the higher sample size n = 1000, the variance reduces drastically, which is expected.
+
+When comparing the two histograms with their respective normal curves, both roughly follow a normal distribution. The sample with the larger size follows the normal distribution even more closely, which is consistent with the reduced variance. In the QQ plots, it can be seen that n = 20 has a heavy upper tail and a light lower tail, indicating more extreme values than the normal distribution in the upper end and fewer extreme values in the lower end. For n = 1000, this effect is reduced, and the sample closely matches its normal distribution.
