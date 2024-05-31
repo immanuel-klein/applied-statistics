@@ -165,25 +165,17 @@ Here are some key observations that are also in line with what has already been 
 # Function to calculate ecdf and confidence intervals
 ecdf.with.ci <- function(data, alpha = 0.05) {
   n <- length(data)
-  ecdf.fn <- ecdf(data)
-  x.vals <- sort(data)
-  ecdf.vals <- ecdf.fn(x.vals)
-  se <- sqrt(ecdf.vals * (1 - ecdf.vals) / n)
-  z <- qnorm(1 - alpha / 2)
-  lower.ci <- pmax(ecdf.vals - z * se, 0)
-  upper.ci <- pmin(ecdf.vals + z * se, 1)
+  ecdf.data <- ecdf(data)
+  x <- sort(unique(data))
+  y <- ecdf.data(x)
   
-  data.frame(
-    x = x.vals,
-    ecdf = ecdf.vals,
-    lower.ci = lower.ci,
-    upper.ci = upper.ci
-  )
+  # Slutzky's lemma and general limit theorem: Using var of the sample to approx. real var
+  epsilon <- sqrt(var(data) * log(2 / alpha))
+  lower <- pmax(y - epsilon, 0)
+  upper <- pmin(y + epsilon, 1)
+  
+  data.frame(x = x, y = y, lower = lower, upper = upper)
 }
-
-pH.good <- working.df %>% filter(good == 1) %>% pull(pH)
-pH.bad <- working.df %>% filter(good == 0) %>% pull(pH)
-pH.all <- working.df %>% pull(pH)
 
 pH.good <- working.df %>% filter(good == 1) %>% pull(pH)
 pH.bad <- working.df %>% filter(good == 0) %>% pull(pH)
@@ -194,25 +186,25 @@ ecdf.good <- ecdf.with.ci(pH.good)
 ecdf.bad <- ecdf.with.ci(pH.bad)
 
 # Plot all wines
-ggplot(ecdf.all, aes(x = x, y = ecdf)) +
-  geom_step() +
-  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.5, fill = "red") +
+ggplot(ecdf.all, aes(x = x, y = y)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "blue") +
+  geom_step(color = "red") +
   labs(title = "Empirical Distribution Functions of pH for All Wines",
        x = "pH", 
        y = "Cumulative Probability")
 
 # Plot good wines
-ggplot(ecdf.good, aes(x = x, y = ecdf)) +
-  geom_step() +
-  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.5, fill = "red") +
+ggplot(ecdf.good, aes(x = x, y = y)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "blue") +
+  geom_step(color = "red") +
   labs(title = "Empirical Distribution Functions of pH for Good Wines", 
        x = "pH", 
        y = "Cumulative Probability")
 
 # Plot bad wines
-ggplot(ecdf.bad, aes(x = x, y = ecdf)) +
-  geom_step() +
-  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.5, fill = "red") +
+ggplot(ecdf.bad, aes(x = x, y = y)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "blue") +
+  geom_step(color = "red") +
   labs(title = "Empirical Distribution Functions of pH for Bad Wines", 
        x = "pH", 
        y = "Cumulative Probability")
@@ -225,21 +217,16 @@ ggplot(ecdf.bad, aes(x = x, y = ecdf)) +
 # Function to calculate ecdf and uniform confidence intervals using KS method
 ecdf.with.ks.ci <- function(data, alpha = 0.05) {
   n <- length(data)
-  ecdf.fn <- ecdf(data)
-  x.vals <- sort(data)
-  ecdf.vals <- ecdf.fn(x.vals)
+  ecdf.data <- ecdf(data)
+  x <- sort(unique(data))
+  y <- ecdf.data(x)
   
-  ks.critical.value <- sqrt(-0.5 * log(alpha / 2) / n)
+  # Kolmogorov-Smirnov criterion for confidence bands
+  epsilon <- sqrt(-0.5 * log(alpha / 2)) / sqrt(n)
+  lower <- pmax(y - epsilon, 0)
+  upper <- pmin(y + epsilon, 1)
   
-  lower.ci <- pmax(ecdf.vals - ks.critical.value, 0)
-  upper.ci <- pmin(ecdf.vals + ks.critical.value, 1)
-  
-  data.frame(
-    x = x.vals,
-    ecdf = ecdf.vals,
-    lower.ci = lower.ci,
-    upper.ci = upper.ci
-  )
+  data.frame(x = x, y = y, lower = lower, upper = upper)
 }
 
 # From this line on: same code as in Exercise (c)
@@ -248,40 +235,36 @@ pH.good <- working.df %>% filter(good == 1) %>% pull(pH)
 pH.bad <- working.df %>% filter(good == 0) %>% pull(pH)
 pH.all <- working.df %>% pull(pH)
 
-pH.good <- working.df %>% filter(good == 1) %>% pull(pH)
-pH.bad <- working.df %>% filter(good == 0) %>% pull(pH)
-pH.all <- working.df %>% pull(pH)
-
-ecdf.all <- ecdf.with.ci(pH.all)
-ecdf.good <- ecdf.with.ci(pH.good)
-ecdf.bad <- ecdf.with.ci(pH.bad)
+ecdf.all <- ecdf.with.ks.ci(pH.all)
+ecdf.good <- ecdf.with.ks.ci(pH.good)
+ecdf.bad <- ecdf.with.ks.ci(pH.bad)
 
 # Plot all wines
-ggplot(ecdf.all, aes(x = x, y = ecdf)) +
-  geom_step() +
-  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.5, fill = "red") +
+ggplot(ecdf.all, aes(x = x, y = y)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "blue") +
+  geom_step(color = "red") +
   labs(title = "Empirical Distribution Functions of pH for All Wines",
        x = "pH", 
        y = "Cumulative Probability")
 
 # Plot good wines
-ggplot(ecdf.good, aes(x = x, y = ecdf)) +
-  geom_step() +
-  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.5, fill = "red") +
+ggplot(ecdf.good, aes(x = x, y = y)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "blue") +
+  geom_step(color = "red") +
   labs(title = "Empirical Distribution Functions of pH for Good Wines", 
        x = "pH", 
        y = "Cumulative Probability")
 
 # Plot bad wines
-ggplot(ecdf.bad, aes(x = x, y = ecdf)) +
-  geom_step() +
-  geom_ribbon(aes(ymin = lower.ci, ymax = upper.ci), alpha = 0.5, fill = "red") +
+ggplot(ecdf.bad, aes(x = x, y = y)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper), alpha = 0.3, fill = "blue") +
+  geom_step(color = "red") +
   labs(title = "Empirical Distribution Functions of pH for Bad Wines", 
        x = "pH", 
        y = "Cumulative Probability")
 ```
 
-Remark: There is no difference between the pointwise and uniform confidence bands because the calculation is not correct yet!
+Remark: Calculation probably not right!
 
 ## Exercise (d)
 
@@ -304,4 +287,39 @@ ggplot(combined.data, aes(x = x, y = ecdf, color = type)) +
   scale_color_manual(values = c("Good" = "blue", "Bad" = "red"))
 ```
 
-Remark: There is no difference between the pointwise and uniform confidence bands because the calculation is not correct yet!
+Remark: calculation is not correct yet!
+
+```{r}
+# Function to calculate ECDF and pointwise confidence bands
+ecdf_confidence_bands <- function(data, alpha = 0.05) {
+  n <- length(data)
+  ecdf_data <- ecdf(data)
+  x <- sort(unique(data))
+  y <- ecdf_data(x)
+  
+  epsilon <- sqrt((1/(2*n)) * log(2/alpha))
+  lower <- pmax(y - epsilon, 0)
+  upper <- pmin(y + epsilon, 1)
+  
+  data.frame(x = x, y = y, lower = lower, upper = upper)
+}
+
+# Calculate ECDF and confidence bands for each group
+ecdf_good <- ecdf_confidence_bands(pH.good)
+ecdf_bad <- ecdf_confidence_bands(pH.bad)
+ecdf_all <- ecdf_confidence_bands(pH.all)
+
+# Plotting
+ggplot() +
+  geom_step(data = ecdf_good, aes(x = x, y = y), color = 'blue', linetype = "solid", size = 1) +
+  geom_ribbon(data = ecdf_good, aes(x = x, ymin = lower, ymax = upper), fill = 'blue', alpha = 0.2) +
+  geom_step(data = ecdf_bad, aes(x = x, y = y), color = 'red', linetype = "solid", size = 1) +
+  geom_ribbon(data = ecdf_bad, aes(x = x, ymin = lower, ymax = upper), fill = 'red', alpha = 0.2) +
+  geom_step(data = ecdf_all, aes(x = x, y = y), color = 'green', linetype = "solid", size = 1) +
+  geom_ribbon(data = ecdf_all, aes(x = x, ymin = lower, ymax = upper), fill = 'green', alpha = 0.2) +
+  labs(title = "Empirical Distribution Functions of pH for Good, Bad, and All Wines",
+       x = "pH", y = "ECDF",
+       color = "Group") +
+  scale_color_manual(values = c("blue" = "Good", "red" = "Bad", "green" = "All")) +
+  theme_minimal()
+```
