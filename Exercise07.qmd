@@ -16,3 +16,34 @@ library("ggplot2")
 students.math <- read.csv("student-mat.csv", sep = ",")
 head(students.math)
 ```
+
+## Exercise (a)
+
+```{r}
+# Identify the distribution of each of G1, G2, and G3:
+# - Plot histograms
+# - Plot QQ plots with Normal and Poisson distribution
+
+g1 <- students.math %>% pull(G1)
+g2 <- students.math %>% pull(G2)
+g3 <- students.math %>% pull(G3)
+
+ggplot(students.math, aes(x = G1)) + 
+  geom_histogram(aes(y = after_stat(density)), 
+                 position = "identity", 
+                 alpha = 0.5, 
+                 bins = 30) + 
+  labs(title = "Histogram of G1", 
+       x = "Grade", 
+       y = "Frequency") +
+  stat_function(fun = dnorm, 
+                args = c(mean = mean(g1), sd = sd(g1)), 
+                color = "red")
+
+ggplot(data.frame(g1 = g1), aes(sample = g1)) +
+  geom_qq() +
+  geom_qq_line(col = "red") +
+  labs(x = "Theoretical Quantiles",
+       y = "Empirical Quantiles",
+       title = "QQ: Grades against Normal Distr.")
+```
