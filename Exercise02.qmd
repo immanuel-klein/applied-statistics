@@ -1,7 +1,7 @@
 ---
 title: "Exercise02"
 author: "Immanuel Klein"
-format: html
+format: pdf
 editor: visual
 ---
 
