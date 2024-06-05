@@ -46,4 +46,29 @@ ggplot(data.frame(g1 = g1), aes(sample = g1)) +
   labs(x = "Theoretical Quantiles",
        y = "Empirical Quantiles",
        title = "QQ: Grades against Normal Distr.")
+
+
+# Plot histogram with Poisson distribution overlay
+ggplot(students.math, aes(x = G1)) + 
+  geom_histogram(aes(y = after_stat(density)), 
+                 position = "identity", 
+                 alpha = 0.5, 
+                 bins = 30) + 
+  labs(title = "Histogram of G1", 
+       x = "Grade", 
+       y = "Density") +
+  stat_function(fun = function(x) dpois(round(x), mean(g1)), 
+                color = "red") +
+  labs(title = "Histogram of G1 with Poisson Distribution",
+       x = "Grade",
+       y = "Density")
+
+# QQ Plot for Poisson Distribution
+ggplot(data.frame(g1 = g1), aes(sample = g1)) +
+  stat_qq(distribution = qpois, dparams = mean(g1)) +
+  stat_qq_line(distribution = qpois, dparams = mean(g1), col = "red") +
+  labs(x = "Theoretical Quantiles",
+       y = "Empirical Quantiles",
+       title = "QQ Plot: Grades against Poisson Distribution")
+
 ```
