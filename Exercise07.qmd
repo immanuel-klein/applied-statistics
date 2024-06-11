@@ -69,3 +69,74 @@ ggplot(data.frame(g1 = g1), aes(sample = g1)) +
        y = "Empirical Quantiles",
        title = "QQ Plot: Grades against Poisson Distribution")
 ```
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(readr)
+
+# Load the dataset
+student_data <- read.csv("student-mat.csv")
+
+# Check the first few rows to understand the structure
+head(student_data)
+
+# Visual inspection: Histograms and Q-Q plots for G1, G2, and G3
+
+# Function to create histogram and Q-Q plot
+plot_distribution <- function(data, data.name) {
+  
+  hist.plot <- ggplot(data.frame(data), aes(x = data)) +
+    geom_histogram(aes(y = after_stat(density)), binwidth = 1, fill = "white", color = "black") +
+    stat_function(fun = dnorm, args = c(mean = mean(data), sd = sd(data)), color = "red") +
+    labs(title = paste("Histogram of", data.name), x = data.name, y = "Density")
+  
+  # Q-Q plot
+  qq.plot <- ggplot(data.frame(data), aes(sample = data)) +
+    stat_qq() +
+    stat_qq_line(color = "red") +
+    labs(title = paste("Q-Q Plot of", data.name), x = "Theoretical Quantiles", y = "Sample Quantiles")
+  
+  
+  gridExtra::grid.arrange(hist.plot, qq.plot)
+}
+
+# Plot distributions for G1, G2, and G3
+plot_distribution(student_data$G1, "G1")
+plot_distribution(student_data$G2, "G2")
+plot_distribution(student_data$G3, "G3")
+
+# Statistical tests for normality
+shapiro.test(student_data$G1)
+shapiro.test(student_data$G2)
+shapiro.test(student_data$G3)
+
+# Poisson distribution check
+# Compare mean and variance for Poisson assumption
+mean.var.disp <- function(variable, variable_name) {
+  cat("Mean, variance, and dispersion for", variable_name, "\n")
+  cat("Mean:", mean(variable), "\n")
+  cat("Variance:", var(variable), "\n")
+  
+  fit <- glm(variable ~ 1, family = poisson)
+  dispersion <- sum(residuals(fit, type = "pearson")^2) / fit$df.residual
+  cat(paste("Dispersion:", dispersion, "\n\n"))
+}
+
+mean.var.disp(student_data$G1, "G1")
+mean.var.disp(student_data$G2, "G2")
+mean.var.disp(student_data$G3, "G3")
+
+```
+
+### Interpretation:
+
+-   **Normality:** If the histograms and Q-Q plots show deviations from a bell curve and the Shapiro-Wilk test has p-values \< 0.05, the grades do not follow a normal distribution. This is the case here. G1 performs best but still not good enough.
+
+-   **Poisson Distribution:** If the mean and variance are not close, and the dispersion value is significantly greater than 1, the data does not follow a Poisson distribution and may show signs of over-dispersion.
+
+    -   **G1**: Fits a Poisson distribution quite well. G1 could be reasonably approximated by a Poisson distribution.
+
+    -   **G2**: Shows slight over-dispersion, indicating a mild deviation from a Poisson distribution.
+
+    -   **G3**: Exhibits significant over-dispersion, indicating that a Poisson distribution is not appropriate.
