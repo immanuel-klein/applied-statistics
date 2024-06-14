@@ -20,116 +20,62 @@ head(students.math)
 ## Exercise (a)
 
 ```{r}
-# Identify the distribution of each of G1, G2, and G3:
-# - Plot histograms
-# - Plot QQ plots with Normal and Poisson distribution
-
-g1 <- students.math %>% pull(G1)
-g2 <- students.math %>% pull(G2)
-g3 <- students.math %>% pull(G3)
-
-ggplot(students.math, aes(x = G1)) + 
-  geom_histogram(aes(y = after_stat(density)), 
-                 position = "identity", 
-                 alpha = 0.5, 
-                 bins = 30) + 
-  labs(title = "Histogram of G1", 
-       x = "Grade", 
-       y = "Frequency") +
-  stat_function(fun = dnorm, 
-                args = c(mean = mean(g1), sd = sd(g1)), 
-                color = "red")
-
-ggplot(data.frame(g1 = g1), aes(sample = g1)) +
-  geom_qq() +
-  geom_qq_line(col = "red") +
-  labs(x = "Theoretical Quantiles",
-       y = "Empirical Quantiles",
-       title = "QQ: Grades against Normal Distr.")
-
-ggplot(students.math, aes(x = G1)) + 
-  geom_histogram(aes(y = after_stat(density)), 
-                 position = "identity", 
-                 alpha = 0.5, 
-                 bins = 30) + 
-  labs(title = "Histogram of G1", 
-       x = "Grade", 
-       y = "Density") +
-  stat_function(fun = function(x) dpois(round(x), mean(g1)),
-                color = "red") +
-  labs(title = "Histogram of G1 with Poisson Distribution",
-       x = "Grade",
-       y = "Density")
-
-# QQ Plot for Poisson Distribution
-ggplot(data.frame(g1 = g1), aes(sample = g1)) +
-  stat_qq(distribution = qpois, dparams = mean(g1)) +
-  stat_qq_line(distribution = qpois, dparams = mean(g1), col = "red") +
-  labs(x = "Theoretical Quantiles",
-       y = "Empirical Quantiles",
-       title = "QQ Plot: Grades against Poisson Distribution")
-```
-
-```{r}
 # Load necessary libraries
 library(ggplot2)
 library(readr)
 
-# Load the dataset
-student_data <- read.csv("student-mat.csv")
-
-# Check the first few rows to understand the structure
-head(student_data)
-
-# Visual inspection: Histograms and Q-Q plots for G1, G2, and G3
-
 # Function to create histogram and Q-Q plot
-plot_distribution <- function(data, data.name) {
-  
+plot.distribution <- function(data, data.name) {
   hist.plot <- ggplot(data.frame(data), aes(x = data)) +
-    geom_histogram(aes(y = after_stat(density)), binwidth = 1, fill = "white", color = "black") +
-    stat_function(fun = dnorm, args = c(mean = mean(data), sd = sd(data)), color = "red") +
-    labs(title = paste("Histogram of", data.name), x = data.name, y = "Density")
-  
-  # Q-Q plot
+    geom_histogram(aes(y = after_stat(density)), 
+                   binwidth = 1, 
+                   fill = "white", 
+                   color = "black") +
+    stat_function(fun = dnorm, 
+                  args = c(mean = mean(data), sd = sd(data)), 
+                  color = "red") +
+    labs(title = paste("Histogram of", data.name), 
+         x = data.name, 
+         y = "Density")
+
   qq.plot <- ggplot(data.frame(data), aes(sample = data)) +
     stat_qq() +
     stat_qq_line(color = "red") +
-    labs(title = paste("Q-Q Plot of", data.name), x = "Theoretical Quantiles", y = "Sample Quantiles")
-  
+    labs(title = paste("Q-Q Plot of", data.name), 
+         x = "Theoretical Quantiles", 
+         y = "Sample Quantiles")
   
   gridExtra::grid.arrange(hist.plot, qq.plot)
 }
 
-# Plot distributions for G1, G2, and G3
-plot_distribution(student_data$G1, "G1")
-plot_distribution(student_data$G2, "G2")
-plot_distribution(student_data$G3, "G3")
-
-# Statistical tests for normality
-shapiro.test(student_data$G1)
-shapiro.test(student_data$G2)
-shapiro.test(student_data$G3)
-
 # Poisson distribution check
 # Compare mean and variance for Poisson assumption
-mean.var.disp <- function(variable, variable_name) {
-  cat("Mean, variance, and dispersion for", variable_name, "\n")
+mean.var.disp <- function(variable, variable.name) {
+  cat("Mean, variance, and dispersion for", variable.name, "\n")
   cat("Mean:", mean(variable), "\n")
   cat("Variance:", var(variable), "\n")
   
+  # Check for overdispersion
   fit <- glm(variable ~ 1, family = poisson)
   dispersion <- sum(residuals(fit, type = "pearson")^2) / fit$df.residual
   cat(paste("Dispersion:", dispersion, "\n\n"))
 }
 
-mean.var.disp(student_data$G1, "G1")
-mean.var.disp(student_data$G2, "G2")
-mean.var.disp(student_data$G3, "G3")
+# Plot distributions for G1, G2, and G3
+plot.distribution(students.math$G1, "G1")
+plot.distribution(students.math$G2, "G2")
+plot.distribution(students.math$G3, "G3")
 
+# Statistical tests for normality
+shapiro.test(students.math$G1)
+shapiro.test(students.math$G2)
+shapiro.test(students.math$G3)
+
+# Poisson
+mean.var.disp(students.math$G1, "G1")
+mean.var.disp(students.math$G2, "G2")
+mean.var.disp(students.math$G3, "G3")
 ```
-
-### Interpretation:
 
 -   **Normality:** If the histograms and Q-Q plots show deviations from a bell curve and the Shapiro-Wilk test has p-values \< 0.05, the grades do not follow a normal distribution. This is the case here. G1 performs best but still not good enough.
 
@@ -140,3 +86,88 @@ mean.var.disp(student_data$G3, "G3")
     -   **G2**: Shows slight over-dispersion, indicating a mild deviation from a Poisson distribution.
 
     -   **G3**: Exhibits significant over-dispersion, indicating that a Poisson distribution is not appropriate.
+
+## Exercise (b)
+
+```{r}
+# Function to create histogram and Q-Q plot for residuals
+plot.residuals <- function(residuals, residual.name) {
+  hist.plot <- ggplot(data.frame(residuals), aes(x = residuals)) +
+    geom_histogram(aes(y = after_stat(density)), 
+                   binwidth = 1, 
+                   fill = "white", 
+                   color = "black") +
+    stat_function(fun = dnorm, 
+                  args = c(mean = mean(residuals), sd = sd(residuals)), 
+                  color = "red") +
+    labs(title = paste("Histogram of", residual.name), 
+         x = residual.name, 
+         y = "Density")
+
+  qq.plot <- ggplot(data.frame(residuals), aes(sample = residuals)) +
+    stat_qq() +
+    stat_qq_line(color = "red") +
+    labs(title = paste("Q-Q Plot of", residual.name), 
+         x = "Theoretical Quantiles",
+         y = "Sample Quantiles")
+  
+  gridExtra::grid.arrange(hist.plot, qq.plot)
+}
+
+# Model 1: Using all explanatory variables
+model1 <- glm(G1 ~ ., data = students.math, family = poisson())
+summary(glm)
+
+# Calculate Pearson residuals
+pearson.residuals <- residuals(model1, type = "pearson")
+
+# Calculate Anscombe residuals
+anscombe.residuals <- residuals(model1, type = "response")^(1/3)
+
+# Plot Pearson residuals
+plot.residuals(pearson.residuals, "Pearson Residuals")
+
+# Plot Anscombe residuals
+plot.residuals(anscombe.residuals, "Anscombe Residuals")
+
+# Shapiro-Wilk test for normality of residuals
+shapiro.test(pearson.residuals)
+shapiro.test(anscombe.residuals)
+
+# Residuals vs Fitted values plot
+ggplot(data.frame(fitted = fitted(model1), residuals = pearson.residuals), 
+       aes(x = fitted, y = residuals)) +
+  geom_point() +
+  geom_smooth(method = "loess", col = "red") +
+  labs(title = "Residuals vs Fitted Values", 
+       x = "Fitted Values", 
+       y = "Pearson Residuals")
+```
+
+-   Comment on AIC value
+
+## Exercise (c)
+
+```{r}
+# Model 2: GLM with reduced covariates
+model2 <- glm(G1 ~ sex + Fedu + studytime + failures + schoolsup + famsup + goout,
+              data = students.math,
+              family = poisson())
+summary(model2)
+
+# Analysis of deviance test between Model 1 and Model 2
+deviance.analysis <- anova(model1, model2, test = "Chi")
+print(deviance.analysis)
+
+# Model 3: GLM with Walc instead of goout
+model3 <- glm(G1 ~ sex + Fedu + studytime + failures + schoolsup + famsup + Walc,
+              data = students.math,
+              family = poisson())
+summary(model3)
+
+# Goodness-of-fit: AIC value
+cat("AIC value of Model 3:", AIC(model3), "\n")
+
+```
+
+-   comment on AIC
