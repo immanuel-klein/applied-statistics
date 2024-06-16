@@ -90,33 +90,21 @@ mean.var.disp(students.math$G3, "G3")
 ## Exercise (b)
 
 ```{r}
-# Function to create histogram and Q-Q plot for residuals
+# Function to create ha Q-Q plot for residuals
 plot.residuals <- function(residuals, residual.name) {
-  hist.plot <- ggplot(data.frame(residuals), aes(x = residuals)) +
-    geom_histogram(aes(y = after_stat(density)), 
-                   binwidth = 1, 
-                   fill = "white", 
-                   color = "black") +
-    stat_function(fun = dnorm, 
-                  args = c(mean = mean(residuals), sd = sd(residuals)), 
-                  color = "red") +
-    labs(title = paste("Histogram of", residual.name), 
-         x = residual.name, 
-         y = "Density")
-
-  qq.plot <- ggplot(data.frame(residuals), aes(sample = residuals)) +
+  ggplot(data.frame(residuals), aes(sample = residuals)) +
     stat_qq() +
     stat_qq_line(color = "red") +
     labs(title = paste("Q-Q Plot of", residual.name), 
          x = "Theoretical Quantiles",
          y = "Sample Quantiles")
-  
-  gridExtra::grid.arrange(hist.plot, qq.plot)
 }
 
 # Model 1: Using all explanatory variables
-model1 <- glm(G1 ~ ., data = students.math, family = poisson())
-summary(glm)
+model1 <- glm(G1 ~ . - G2 - G3, 
+              data = students.math, 
+              family = poisson())
+summary(model1)
 
 # Calculate Pearson residuals
 pearson.residuals <- residuals(model1, type = "pearson")
@@ -135,7 +123,8 @@ shapiro.test(pearson.residuals)
 shapiro.test(anscombe.residuals)
 
 # Residuals vs Fitted values plot
-ggplot(data.frame(fitted = fitted(model1), residuals = pearson.residuals), 
+ggplot(data.frame(fitted = fitted(model1), 
+                  residuals = pearson.residuals), 
        aes(x = fitted, y = residuals)) +
   geom_point() +
   geom_smooth(method = "loess", col = "red") +
@@ -144,13 +133,51 @@ ggplot(data.frame(fitted = fitted(model1), residuals = pearson.residuals),
        y = "Pearson Residuals")
 ```
 
--   Comment on AIC value
+### Significance of Covariates
+
+-   `failures` and `schoolsupyes`: Highly significant with p-values \< 0.001.
+
+-   `studytime` and `famsupyes`: Very significant with p-values between 0.001 and 0.01.
+
+-   `goout` and `sexM`: Significant with p-values between 0.01 and 0.05.
+
+-   Other Covariates: Not significant with p-values ≥ 0.1.
+
+### Goodness-of-Fit
+
+-   The AIC value of this model is 2000.2.
+
+-   Without comparison to other models (e.g., models 2 and 3), we cannot make definitive statements about the goodness-of-fit. The absolute AIC value alone is not sufficient for interpretation.
+
+### Residual Analysis
+
+-   Q-Q Plots: For both Pearson and Anscombe residuals, there is noticeable deviation from the diagonal in the tails, indicating potential issues with normality.
+
+-   Shapiro-Wilk Test:
+
+    -   Pearson residuals: p-value = 0.04651, suggesting deviation from normality (p \< 0.05).
+
+    -   Anscombe residuals: p-value = 0.08701, suggesting they follow a normal distribution (p \> 0.05).
+
+-   Residuals vs Fitted Values Plot: Residuals are fairly randomly distributed with no clear pattern, though they thin out at the upper and lower ends of the range.
+
+### Conclusion
+
+-   The residuals are somewhat close to following a normal distribution, but there are noticeable deviations.
+
+-   The GLM appears to be moderately adequate for the data, though it is not a perfect fit. There is room for improvement in the model to better capture the data's underlying structure.
 
 ## Exercise (c)
 
 ```{r}
 # Model 2: GLM with reduced covariates
-model2 <- glm(G1 ~ sex + Fedu + studytime + failures + schoolsup + famsup + goout,
+model2 <- glm(G1 ~ sex + 
+                Fedu + 
+                studytime + 
+                failures + 
+                schoolsup + 
+                famsup + 
+                goout,
               data = students.math,
               family = poisson())
 summary(model2)
@@ -160,7 +187,13 @@ deviance.analysis <- anova(model1, model2, test = "Chi")
 print(deviance.analysis)
 
 # Model 3: GLM with Walc instead of goout
-model3 <- glm(G1 ~ sex + Fedu + studytime + failures + schoolsup + famsup + Walc,
+model3 <- glm(G1 ~ sex + 
+                Fedu + 
+                studytime + 
+                failures + 
+                schoolsup + 
+                famsup + 
+                Walc,
               data = students.math,
               family = poisson())
 summary(model3)
@@ -170,4 +203,18 @@ cat("AIC value of Model 3:", AIC(model3), "\n")
 
 ```
 
--   comment on AIC
+### Model 2
+
+-   Significance of Covariates: All covariates are significant, with some even being very or highly significant.
+
+-   Goodness-of-Fit: The AIC value of Model 2 is smaller than the AIC value of Model 1, suggesting that Model 2 has a better fit. However, the difference is rather small.
+
+-   Analysis of Deviance Test: The p-value (0.1858) is greater than the conventional significance level (e.g., 0.05). This means that the reduction in deviance by adding the additional variables in Model 1 is not statistically significant. There is not enough evidence to suggest that the additional variables in Model 1 significantly improve the model fit compared to the simpler Model 2. Thus, Model 2, with fewer variables, is preferable.
+
+### Model 3
+
+-   Model 2 and Model 3 can be compared by the AIC value and the significance levels of the covariates.
+
+-   AIC Comparison: The AIC value of Model 3 is slightly higher than that of Model 2. However, the difference is only marginal.
+
+-   Since the significance levels of the covariates did not change and the AIC values are so close together, one could be indifferent between Model 2 and Model 3.
