@@ -1,0 +1,60 @@
+---
+title: "Exercise05"
+author: "Immanuel Klein"
+format: pdf
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(ISLR)
+library(glmnet)
+```
+
+# 5 Penalized Regression
+
+## Exercise (a)
+
+```{r}
+# Loading the dataset and creating a new dataset 
+# containing only those players for which all data is available.
+
+data(Hitters)
+hitters.clean <- na.omit(Hitters)
+
+str(hitters.clean)
+head(hitters.clean)
+
+```
+
+## Exercise (b)
+
+```{r}
+# Separate the response variable (Salary) and predictor variables (all others)
+y <- hitters.clean$Salary
+X <- model.matrix(Salary ~ ., data = hitters.clean)[, -1]  # Removing the intercept column
+
+# Compute XtX
+XtX <- t(X) %*% X
+
+# Compute eigenvalues of XtX
+eigenvalues <- eigen(XtX)$values
+
+# Calculate the condition number (ratio of the largest to smallest eigenvalue)
+condition.number <- max(eigenvalues) / min(eigenvalues)
+condition.number
+
+# Standardize the design matrix
+X.standardized <- scale(X)
+
+# Compute XtX for the standardized design matrix
+XtX.standardized <- t(X.standardized) %*% X.standardized
+
+# Compute eigenvalues of the standardized XtX
+eigenvalues.standardized <- eigen(XtX.standardized)$values
+
+# Calculate the condition number for the standardized design matrix
+condition.number.standardized <- max(eigenvalues.standardized) / min(eigenvalues.standardized)
+condition.number.standardized
+```
