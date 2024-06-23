@@ -31,9 +31,8 @@ head(hitters.clean)
 ## Exercise (b)
 
 ```{r}
-# Separate the response variable (Salary) and predictor variables (all others)
-y <- hitters.clean$Salary
-X <- model.matrix(Salary ~ ., data = hitters.clean)[, -1]  # Removing the intercept column
+# Build a model matrix
+X <- model.matrix(Salary ~ ., data = hitters.clean)[, -1]
 
 # Compute XtX
 XtX <- t(X) %*% X
@@ -57,4 +56,107 @@ eigenvalues.standardized <- eigen(XtX.standardized)$values
 # Calculate the condition number for the standardized design matrix
 condition.number.standardized <- max(eigenvalues.standardized) / min(eigenvalues.standardized)
 condition.number.standardized
+```
+
+-   **Condition Number of Original Matrix** XTX:
+
+    -   A high condition number indicates that the matrix XTXXTX is nearly singular and that the columns of XX are nearly linearly dependent, which can lead to numerical instability in regression analysis.
+
+```{=html}
+<!-- -->
+```
+-   **Standardizing the Design Matrix**:
+
+    -   Standardizing the design matrix such that each column (except the intercept) has a mean of zero and variance of one typically reduces the condition number, making the matrix XTXXTX better conditioned.
+
+    -   This can help mitigate multicollinearity and improve numerical stability.
+
+## Exercise (c)
+
+```{r}
+
+# Separate the response variable (Salary) and predictor variables (all others)
+# y <- HittersClean$Salary
+# X <- model.matrix(Salary ~ ., data=HittersClean)[, -1]  # Removing the intercept column
+
+# Standard Linear Regression Model
+linear.models <- lm(Salary ~ ., data=hitters.clean)
+linear.coefficients <- coef(linear.models)
+print("Standard Linear Model Coefficients:")
+print(linear.coefficients)
+
+# Ridge Regression Model with λ = 70
+ridge.model <- glmnet(X, hitters.clean$Salary, alpha = 0, lambda = 70, standardize = TRUE)
+ridge.coefficients <- coef(ridge.model)
+print("Ridge Regression Model Coefficients with λ = 70:")
+print(ridge.coefficients)
+
+# Compare the size of the coefficients
+comparison <- data.frame(
+  Variable = rownames(ridge.coefficients),
+  Linear = as.vector(linear.coefficients),
+  Ridge = as.vector(ridge.coefficients)
+)
+print("Comparison of Coefficients:")
+print(comparison)
+
+```
+
+-   **Standard Linear Model Coefficients**:
+
+    -   These coefficients are obtained by fitting a regular linear regression model without any regularization. They can be large in magnitude if there is multicollinearity among the predictors.
+
+-   **Ridge Regression Coefficients**:
+
+    -   Ridge regression applies L2L2 regularization, which penalizes the size of the coefficients. The λλ parameter controls the strength of this penalty.
+
+    -   With λ=70λ=70, the ridge regression coefficients are expected to be shrunk towards zero compared to the standard linear model coefficients.
+
+## Exercise (d)
+
+```{r}
+set.seed(1122)
+train.indices <- sample(1:nrow(hitters.clean), size = 0.7 * nrow(hitters.clean))
+X.train <- X[train.indices, ]
+y.train <- hitters.clean$Salary[train.indices]
+X.test <- X[-train.indices, ]
+y.test <- hitters.clean$Salary[-train.indices]
+
+# Fit ridge regression models for a range of lambda values using cross-validation
+lambda.seq <- 10^seq(10, -2, length = 100)  # Sequence of lambda values
+ridge.cv <- cv.glmnet(X.train, y.train, alpha = 0, lambda = lambda.seq, standardize = TRUE)
+
+# Find the best lambda based on cross-validation
+best.lambda <- ridge.cv$lambda.min
+print(paste("Best lambda:", best.lambda))
+
+# Fit the ridge regression model using the best lambda
+ridge.best <- glmnet(X.train, y.train, alpha = 0, lambda = best.lambda, standardize = TRUE)
+
+# Predict on the test set
+predictions <- predict(ridge.best, s = best.lambda, newx = X.test)
+
+# Calculate the mean squared prediction error on the test set
+mse <- mean((y.test - predictions)^2)
+print(paste("Mean Squared Prediction Error on the test set:", mse))
+
+# Compare the size of the coefficients in the ridge model with the best lambda
+ridge.coefficients.best <- coef(ridge.best)
+print("Ridge Regression Model Coefficients with best lambda:")
+print(ridge.coefficients.best)
+
+# Fit a standard linear regression model for comparison
+linear.model <- lm(Salary ~ ., data = hitters.clean[train.indices, ])
+linear.coefficients <- coef(linear.model)
+print("Standard Linear Model Coefficients:")
+print(linear.coefficients)
+
+# Create a comparison of coefficients
+comparison <- data.frame(
+  Variable = rownames(ridge.coefficients_best),
+  Linear = as.vector(linear.coefficients),
+  Ridge = as.vector(ridge.coefficients_best)
+)
+print("Comparison of Coefficients:")
+print(comparison)
 ```
