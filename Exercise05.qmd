@@ -62,9 +62,8 @@ condition.number.standardized
 
     -   A high condition number indicates that the matrix XTXXTX is nearly singular and that the columns of XX are nearly linearly dependent, which can lead to numerical instability in regression analysis.
 
-```{=html}
 <!-- -->
-```
+
 -   **Standardizing the Design Matrix**:
 
     -   Standardizing the design matrix such that each column (except the intercept) has a mean of zero and variance of one typically reduces the condition number, making the matrix XTXXTX better conditioned.
@@ -138,18 +137,17 @@ predictions <- predict(ridge.best, s = best.lambda, newx = X.test)
 
 # Calculate the mean squared prediction error on the test set
 mse <- mean((y.test - predictions)^2)
-print(paste("Mean Squared Prediction Error on the test set:", mse))
+paste("Mean Squared Prediction Error on the test set:", mse)
 
 # Compare the size of the coefficients in the ridge model with the best lambda
 ridge.coefficients.best <- coef(ridge.best)
-print("Ridge Regression Model Coefficients with best lambda:")
-print(ridge.coefficients.best)
+paste("Ridge Regression Model Coefficients with best lambda:", ridge.coefficients.best)
 
 # Fit a standard linear regression model for comparison
 linear.model <- lm(Salary ~ ., data = hitters.clean[train.indices, ])
 linear.coefficients <- coef(linear.model)
-print("Standard Linear Model Coefficients:")
-print(linear.coefficients)
+"Standard Linear Model Coefficients:"
+linear.coefficients
 
 # Create a comparison of coefficients
 comparison <- data.frame(
@@ -157,6 +155,113 @@ comparison <- data.frame(
   Linear = as.vector(linear.coefficients),
   Ridge = as.vector(ridge.coefficients_best)
 )
-print("Comparison of Coefficients:")
-print(comparison)
+"Comparison of Coefficients:"
+comparison
 ```
+
+## Exercise (e)
+
+```{r}
+ridge.mse <- function(lambda) {
+  ridge.model <- glmnet(X.train, y.train, alpha = 0, lambda = lambda, standardize = TRUE)
+  predictions <- predict(ridge.model, s = lambda, newx = X.test)
+  mse <- mean((y.test - predictions)^2)
+  return(mse)
+}
+
+# Define the sequence of lambda values
+lambda.seq <- 10^seq(10, -2, length = 100)
+
+# Calculate mean squared prediction error for each lambda
+mse.values <- sapply(lambda.seq, ridge.mse)
+
+# Plot the results
+ggplot(data.frame(log.lambda = log(lambda.seq), mse = mse.values), aes(x = log.lambda, y = mse)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 40)) +
+  labs(x = "log(lambda)", y = "Mean Squared Prediction Error", title = "Mean Squared Prediction Error vs. log(lambda)")
+
+# Identify the lambda that minimizes the mean squared prediction error
+lambda.opt <- lambda.seq[which.min(mse.values)]
+lambda.opt
+```
+
+log(lamba) ca 8.2 at lowest point -\> lambda ca 3700
+
+## Exercise (f)
+
+```{r}
+# Fit a ridge regression with the optimal lambda on all the data
+ridge.final <- glmnet(X, y, alpha = 0, lambda = lambda.opt, standardize = TRUE)
+
+# Extract the coefficients
+final.coefficients <- coef(ridge.final)
+
+# Display the coefficients
+print("Ridge Regression Coefficients with lambda_opt:")
+print(final.coefficients) 
+
+# Identify the most important variables (largest absolute coefficients)
+important.variables <- sort(abs(as.vector(final.coefficients)), decreasing = TRUE)
+print("Most Important Variables:")
+print(important.variables)
+
+# Check if there are any coefficients that are exactly zero
+zero.coefficients <- final.coefficients[final.coefficients == 0]
+print("Coefficients that are exactly zero:")
+print(zero.coefficients)
+
+```
+
+## Exercise (g)
+
+```{r}
+lasso.mse <- function(lambda) {
+  lasso.model <- glmnet(X.train, y.train, alpha = 1, lambda = lambda, standardize = TRUE)
+  predictions <- predict(lasso.model, s = lambda, newx = X.test)
+  mse <- mean((y.test - predictions)^2)
+  return(mse)
+}
+
+# Define the sequence of lambda values
+lambda.seq <- 10^seq(10, -2, length = 100)
+
+# Calculate mean squared prediction error for each lambda
+mse.values <- sapply(lambda.seq, lasso.mse)
+
+# Plot the results
+ggplot(data.frame(log.lambda = log(lambda.seq), mse = mse.values), aes(x = log.lambda, y = mse)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 40)) +
+  labs(x = "log(lambda)", y = "Mean Squared Prediction Error", title = "Mean Squared Prediction Error vs. log(lambda)")
+
+# Identify the lambda that minimizes the mean squared prediction error
+lambda.opt.lasso <- lambda.seq[which.min(mse.values)]
+lambda.opt.lasso
+
+# Fit a lasso regression with the optimal lambda on all the data
+lasso.final <- glmnet(X, y, alpha = 1, lambda = lambda.opt.lasso, standardize = TRUE)
+
+# Extract the coefficients
+final.coefficients.lasso <- coef(lasso.final)
+
+# Display the coefficients
+print("Lasso Regression Coefficients with lambda_opt:")
+print(final.coefficients.lasso)
+
+# Identify the most important variables (largest absolute coefficients)
+important.vars.lasso <- sort(abs(as.vector(final.coefficients.lasso)), decreasing = TRUE)
+print("Most Important Variables:")
+print(important.vars.lasso)
+
+# Check if there are any coefficients that are exactly zero
+zero.coefficients.lasso <- final.coefficients.lasso[final.coefficients.lasso == 0]
+print("Coefficients that are exactly zero:")
+print(zero.coefficients.lasso)
+```
+
+log(lambda) ca 5,2 -\> lambda ca 180
+
+zreo.coefficients überarbeiten und dann aufgabe f angleichen
