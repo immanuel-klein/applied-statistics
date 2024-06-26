@@ -1,0 +1,197 @@
+---
+title: "Exercise07"
+author: "Immanuel Klein"
+format: pdf
+editor: visual
+---
+
+```{r}
+library("tidyverse")
+library("ggplot2")
+```
+
+# 10 Time Series
+
+## Exercise (a)
+
+```{r}
+library(astsa)
+
+# Load the cmort dataset
+data(cmort)
+
+# Initialize the dataframe with NA values
+df <- data.frame(matrix(NA, ncol=3, nrow=length(cmort)-2))
+names(df) <- c("x", "x1", "x2")
+
+# Populate the dataframe with the appropriate values
+for (i in 1:(length(cmort)-2)) {
+    df[i, ] <- cmort[c(i, i+1, i+2)]
+}
+
+# Fit the linear model
+ar2.model <- lm(x ~ x1 + x2, data = df)
+
+# Display the summary of the model
+summary(ar2.model)
+```
+
+Vergleichen mit Code in VL.
+
+## Exercise (b)
+
+```{r}
+# Extract the estimated coefficients from the AR(2) model
+coefficients <- coef(ar2.model)
+
+# Initialize a vector to store the forecasted values
+forecast <- numeric(4)
+
+# Use the last two observed values of cmort
+x1 <- cmort[length(cmort) - 1]
+x2 <- cmort[length(cmort)]
+
+# Forecast the next 4 weeks
+for (i in 1:4) {
+    forecast[i] <- 
+      coefficients[1] + coefficients[2] * x1 + coefficients[3] * x2
+    # Update the lagged values for the next iteration
+    x2 <- x1
+    x1 <- forecast[i]
+}
+
+# Calculate the residual standard error from the model
+residual.se <- summary(ar2.model)$sigma
+
+# Calculate the 95% confidence intervals
+alpha <- 0.05
+z <- qnorm(1 - alpha/2)
+lower.bound <- forecast - z * residual.se
+upper.bound <- forecast + z * residual.se
+
+# Display the forecast and the confidence intervals
+forecast.results <- data.frame(
+    Forecast = forecast,
+    Lower95.CI = lower.bound,
+    Upper95.CI = upper.bound
+)
+
+forecast.results
+
+```
+
+## Exercise (c)
+
+```{r}
+# Estimate the AR(2) model using the Yule-Walker method
+yw.model <- ar.yw(cmort, order.max = 2)
+
+# Extract coefficients and their standard errors from the Yule-Walker estimation
+yw.coefficients <- yw.model$ar
+yw.se <- sqrt(diag(yw.model$asy.var.coef))
+
+# Extract coefficients and standard errors from the linear regression model
+lr.coefficients <- coef(ar2.model)[2:3]
+lr.se <- summary(ar2.model)$coefficients[2:3, 2]
+
+# Create a comparison dataframe
+comparison <- data.frame(
+    Method = c("Linear Regression", "Linear Regression", "Yule-Walker", "Yule-Walker"),
+    Coefficient = rep(c("x1", "x2"), 2),
+    Estimate = c(lr.coefficients, yw.coefficients),
+    Std.Error = c(lr.se, yw.se)
+)
+
+print(comparison)
+```
+
+## Exercise (d)
+
+```{r}
+# Initialize a vector to store the forecasted values using Yule-Walker estimates
+forecast.yw <- numeric(4)
+
+# Use the last two observed values of cmort
+x1 <- cmort[length(cmort) - 1]
+x2 <- cmort[length(cmort)]
+
+# Forecast the next 4 weeks using Yule-Walker estimates
+for (i in 1:4) {
+    forecast.yw[i] <- 
+      yw.coefficients[1] * x1 + yw.coefficients[2] * x2
+    # Update the lagged values for the next iteration
+    x2 <- x1
+    x1 <- forecast.yw[i]
+}
+
+# Calculate the residual standard error from the Yule-Walker model
+residual.se.yw <- sqrt(yw.model$var.pred)
+
+# Calculate the 95% confidence intervals
+alpha <- 0.05
+z <- qnorm(1 - alpha/2)
+lower.bound.yw <- forecast.yw - z * residual.se.yw
+upper.bound.yw <- forecast.yw + z * residual.se.yw
+
+# Display the forecast and the confidence intervals
+forecast.results.yw <- data.frame(
+    Forecast = forecast.yw,
+    Lower.95.CI = lower.bound.yw,
+    Upper.95.CI = upper.bound.yw
+)
+
+print(forecast.results.yw)
+
+```
+
+## Exercise (e)
+
+```{r}
+# Extract the asymptotic variance-covariance matrix of the Yule-Walker estimators
+asy.var.cov <- yw.model$asy.var.coef
+
+# Calculate the standard errors (square root of the diagonal elements of the variance-covariance matrix)
+asy.se.yw <- sqrt(diag(asy.var.cov))
+
+# Create a comparison dataframe
+comparison <- data.frame(
+    Method = c("Linear Regression", "Linear Regression", "Yule-Walker Asymptotic", "Yule-Walker Asymptotic"),
+    Coefficient = rep(c("x1", "x2"), 2),
+    Estimate = c(lr.coefficients, yw.coefficients),
+    Std_Error = c(lr.se, asy.se.yw)
+)
+
+print(comparison)
+```
+
+Compare with asymptotic method of slides?
+
+## Exercise (f)
+
+```{r}
+# Fit the ARMA(2,2) model
+arma22.model <- arima(cmort, order = c(2, 0, 2))
+
+# Display the summary of the ARMA(2,2) model
+summary(arma22.model)
+
+# Extract AIC and BIC values for both models
+aic.ar2 <- AIC(ar2.model)
+bic.ar2 <- BIC(ar2.model)
+
+aic.arma22 <- AIC(arma22.model)
+bic.arma22 <- BIC(arma22.model)
+
+# Create a comparison dataframe
+model.comparison <- data.frame(
+    Model = c("AR(2)", "ARMA(2,2)"),
+    AIC = c(aic.ar2, aic.arma22),
+    BIC = c(bic.ar2, bic.arma22)
+)
+
+print(model.comparison)
+
+# Conduct Ljung-Box test for the residuals of the ARMA(2,2) model
+Box.test(arma22.model$residuals, lag = 20, type = "Ljung-Box")
+
+```
