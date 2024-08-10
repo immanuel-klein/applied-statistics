@@ -10,7 +10,7 @@ library("tidyverse")
 library("ggplot2")
 ```
 
-# Generalized Linear Models
+# 7 Generalized Linear Models
 
 ```{r}
 students.math <- read.csv("student-mat.csv", sep = ",")

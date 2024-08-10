@@ -1,0 +1,167 @@
+---
+title: "Exercise09"
+author: "Immanuel Klein"
+format: pdf
+editor: visual
+---
+
+```{r}
+library("tidyverse")
+library("ggplot2")
+```
+
+# 9 PCA
+
+## Exercise (a)
+
+```{r}
+data(iris)
+iris.reduced <- iris[, -5]
+
+# Extract loadings and scores, perform PCA with cov matrix
+pca.result.cov <- prcomp(iris.reduced, scale. = FALSE)
+
+# Show loadings and scores
+pca.result.cov$rotation
+head(pca.result.cov$x, 5)
+
+# Calculate (cumulative) explained variance.
+variance.explained <- 
+  pca.result.cov$sdev^2 / sum(pca.result.cov$sdev^2)
+cumulative.variance.explained <- sum(variance.explained[1:2])
+paste('Cumulative Variance Explained by First Two PCs: ', 
+      cumulative.variance.explained)
+```
+
+-   PC1 seems to be a general factor, particularly related to petal characteristics. Flowers with larger petal length and width will have higher values on this component. Because Sepal.Width contributes negatively, this dimension might also separate flowers with wide sepals from those with narrow sepals.
+
+```{=html}
+<!-- -->
+```
+-   PC2 mainly represents the width of the sepal. This component could be interpreted as differentiating between flowers with narrow versus wide sepals.
+
+## Exercise (b)
+
+```{r}
+# Calculate the pcs with cor matrix
+pca.result.cor <- prcomp(iris.reduced, scale. = TRUE)
+
+# Show loadings and scores
+pca.result.cor$rotation
+head(pca.result.cor$x, 5)
+
+# Calculate (cumulative) explained variance.
+variance.explained <- 
+  pca.result.cor$sdev^2 / sum(pca.result.cor$sdev^2)
+cumulative.variance.explained <- sum(variance.explained[1:2])
+paste('Variance Explained by First Two PCs: ', 
+      cumulative.variance.explained)
+```
+
+The results of using the correlation matrix are somewhat similar to those of using the covariation matrix when looking at the sign only. However, regarding magnitude they differ quite a bit.
+
+## Exercise (c)
+
+```{r}
+# Create a new dataset with Petal.Length in millimeters
+iris.mm.reduced <- iris.reduced
+iris.mm.reduced$Petal.Length <- iris.mm.reduced$Petal.Length * 10
+
+# Perform PCA with cov matrix
+pca.result.mm.cov <- prcomp(iris.mm.reduced, scale. = FALSE)
+# Loadings and variance explained
+loadings.mm.cov <- pca.result.mm.cov$rotation
+variance.explained.mm.cov <- 
+  pca.result.mm.cov$sdev^2 / sum(pca.result.mm.cov$sdev^2)
+cumulative.variance.explained.mm.cov <- 
+  sum(variance.explained.mm.cov[1:2])
+print('Covariance Matrix')
+pca.result.mm.cov$rotation
+paste('Variance Explained by First Two PCs: ', 
+      cumulative.variance.explained.mm.cov)
+
+# Perform PCA with cor matrix
+pca.result.mm.cor <- prcomp(iris.mm.reduced, scale. = TRUE)
+# Loadings and variance explained
+loadings.mm.cor <- pca.result.mm.cor$rotation
+variance.explained.mm.cor <- 
+  pca.result.mm.cor$sdev^2 / sum(pca.result.mm.cor$sdev^2)
+cumulative.variance.explained.mm.cor <- 
+  sum(variance.explained.mm.cor[1:2])
+print('Correlation Matrix')
+pca.result.mm.cor$rotation
+paste('Variance Explained by First Two PCs: ', 
+      cumulative.variance.explained.mm.cor)
+```
+
+-   For the covariance matrix, the principal components have definitely changed in their loadings. The explained variance has also increased.
+
+-   For the correlation matrix, the principal components have not changed in their loadings. The explained variance has also stayed the same.
+
+## Exercise (d)
+
+```{r}
+# Extract the first two principal components
+pca.data <- data.frame(PC1 = pca.result.cov$x[,1], 
+                      PC2 = pca.result.cov$x[,2], 
+                      Species = iris$Species)
+
+ggplot(pca.data, aes(x = PC1, y = PC2, color = Species)) +
+  geom_point(size = 3) +
+  labs(title = "PCA of Iris Dataset (Cov. Matrix)",
+       x = "PC1",
+       y = "PC2")
+```
+
+-   The first principal component seems to capture the most variance among the species, with a clear separation from left to right.
+
+-   The first two principal components capture a significant amount of variance in the dataset, especially in distinguishing setosa from the other two species. This suggests that the two-dimensional plot provides a somewhat reasonable representation of the data's structure.
+
+-   However, the overlap between versicolor and virginica in this plot indicates that not all the information from the original space is captured by the first two principal components. Some important variations that distinguish these two species might be present in the third and fourth components.
+
+## Exercise (e)
+
+```{r}
+pca.data <- data.frame(PC1 = pca.result.cov$x[,1], 
+                       PC2 = pca.result.cov$x[,2])
+
+set.seed(47)
+
+# Perform K-means clustering with K = 3
+kmeans.result <- kmeans(pca.data, centers = 3, nstart = 20)
+
+# Convert Species to integers
+species.as.int <- as.integer(iris$Species)
+
+# See from tables which cluster belongs to which species and adjust
+table(species.as.int, iris$Species)
+cluster.adjusted <- kmeans.result$cluster
+cluster.adjusted[clusters == 1] <- 2 # versicolor
+cluster.adjusted[clusters == 2] <- 3 # virginica
+cluster.adjusted[clusters == 3] <- 1 # setosa
+table(cluster.adjusted, iris$Species)
+
+# Calculate classification error
+classification.error <- 
+  mean(cluster.adjusted != species.as.int)
+classification.error
+
+# Now with the original dataset
+set.seed(47)
+kmeans.full <- kmeans(iris.reduced, centers = 3, nstart = 20)
+
+# See from tables which cluster belongs to which species and adjust
+table(species.as.int, iris$Species)
+cluster.adjusted.full <- kmeans.full$cluster
+cluster.adjusted.full[clusters == 1] <- 2 # versicolor
+cluster.adjusted.full[clusters == 2] <- 3 # virginica
+cluster.adjusted.full[clusters == 3] <- 1 # setosa
+table(cluster.adjusted.full, iris$Species)
+
+# Calculate classification error 
+classification.error.full <- 
+  mean(cluster.adjusted.full != species.as.int)
+classification.error.full
+```
+
+When using the entire dataset, the clusters maintain the same number of data points (as can be seen from the comparison of cluster centers with species tables), so the classification error remains unchanged.
