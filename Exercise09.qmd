@@ -1,8 +1,12 @@
 ---
-title: "Exercise09"
+title: "9 Principal Component Analysis"
 author: "Immanuel Klein"
 format: pdf
 editor: visual
+execute: 
+  warning: false
+header-includes:
+  - \pagenumbering{gobble}
 ---
 
 ```{r}
@@ -10,7 +14,7 @@ library("tidyverse")
 library("ggplot2")
 ```
 
-# 9 PCA
+This task is about analyzing the Iris dataset using PCA and K-means clustering. First, we create a reduced dataset excluding the species variable, and perform PCA using the empirical covariance matrix to calculate loadings and scores, interpreting the first two principal components and their explained variance. We then repeat the same analysis using the correlation matrix and compare the results. Next, we convert the petal length to millimeters, and look at the impact on PCA using both covariance and correlation matrices. Then we use the original dataset to plot the first two principal components with species marked by color, assessing whether this 2D plot represents the original 4D space. Finally, we perform K-means clustering on the first two principal components with K=3, and compare the results to the actual labels to evaluate classification accuracy and whether using the entire dataset improves this accuracy.
 
 ## Exercise (a)
 
@@ -33,11 +37,7 @@ paste('Cumulative Variance Explained by First Two PCs: ',
       cumulative.variance.explained)
 ```
 
--   PC1 seems to be a general factor, particularly related to petal characteristics. Flowers with larger petal length and width will have higher values on this component. Because Sepal.Width contributes negatively, this dimension might also separate flowers with wide sepals from those with narrow sepals.
-
-```{=html}
-<!-- -->
-```
+-   PC1 seems to be a general factor, particularly related to petal characteristics. Flowers with larger petal length and width will have higher values on this component. Because `Sepal.Width` contributes negatively, this dimension might also separate flowers with wide sepals from those with narrow sepals.
 -   PC2 mainly represents the width of the sepal. This component could be interpreted as differentiating between flowers with narrow versus wide sepals.
 
 ## Exercise (b)
@@ -50,7 +50,7 @@ pca.result.cor <- prcomp(iris.reduced, scale. = TRUE)
 pca.result.cor$rotation
 head(pca.result.cor$x, 5)
 
-# Calculate (cumulative) explained variance.
+# Calculate explained variance.
 variance.explained <- 
   pca.result.cor$sdev^2 / sum(pca.result.cor$sdev^2)
 cumulative.variance.explained <- sum(variance.explained[1:2])
@@ -136,9 +136,9 @@ species.as.int <- as.integer(iris$Species)
 # See from tables which cluster belongs to which species and adjust
 table(species.as.int, iris$Species)
 cluster.adjusted <- kmeans.result$cluster
-cluster.adjusted[clusters == 1] <- 2 # versicolor
-cluster.adjusted[clusters == 2] <- 3 # virginica
-cluster.adjusted[clusters == 3] <- 1 # setosa
+cluster.adjusted[kmeans.result$cluster == 1] <- 2 # versicolor
+cluster.adjusted[kmeans.result$cluster == 2] <- 3 # virginica
+cluster.adjusted[kmeans.result$cluster == 3] <- 1 # setosa
 table(cluster.adjusted, iris$Species)
 
 # Calculate classification error
@@ -153,9 +153,9 @@ kmeans.full <- kmeans(iris.reduced, centers = 3, nstart = 20)
 # See from tables which cluster belongs to which species and adjust
 table(species.as.int, iris$Species)
 cluster.adjusted.full <- kmeans.full$cluster
-cluster.adjusted.full[clusters == 1] <- 2 # versicolor
-cluster.adjusted.full[clusters == 2] <- 3 # virginica
-cluster.adjusted.full[clusters == 3] <- 1 # setosa
+cluster.adjusted.full[kmeans.full$cluster == 1] <- 2 # versicolor
+cluster.adjusted.full[kmeans.full$cluster == 2] <- 3 # virginica
+cluster.adjusted.full[kmeans.full$cluster == 3] <- 1 # setosa
 table(cluster.adjusted.full, iris$Species)
 
 # Calculate classification error 
@@ -164,4 +164,4 @@ classification.error.full <-
 classification.error.full
 ```
 
-When using the entire dataset, the clusters maintain the same number of data points (as can be seen from the comparison of cluster centers with species tables), so the classification error remains unchanged.
+When using the entire dataset, one data point changes clusters, which leads to a small reduction in the classification error.
