@@ -1,8 +1,12 @@
 ---
-title: "Exercise03"
+title: "3 Maximum likelihood estimation"
 author: "Immanuel Klein"
-format: html
+format: pdf
 editor: visual
+execute: 
+  warning: false
+header-includes:
+  - \pagenumbering{gobble}
 ---
 
 ```{r}
@@ -11,7 +15,7 @@ library("ggplot2")
 library("rmutil")
 ```
 
-# 3 Maximum likelihood estimation
+This problem is about estimating the parameter mu of a Laplace distribution using MLE and comparing different methods. First, it requires proving that the MLE of mu is the median of the sample and discussing its uniqueness. Then, independent realizations of the Laplace distribution are generated for estimating μ with the R function `quantile` and trying out different types of sample quantiles. We also write a custom function to calculate the MLE using `optimize` and compare this estimator to the quantile-based one. Finally, we look at the distribution of the MLE through Monte Carlo simulations, comparing the results for sample sizes n = 20 and n = 1000 with the use of histograms, QQ-plots, and variance analysis.
 
 ## Exercise (a)
 
@@ -19,9 +23,9 @@ library("rmutil")
 
 For both MLE and median calculation, the principle of uniqueness applies similarly:
 
-1.  **Uneven Sample Size**: In the case of an odd sample size, there exists a unique solution.
+1.  Uneven Sample Size: In the case of an odd sample size, there exists a unique solution.
 
-2.  **Even Sample Size**: When the sample size is even, any value within the range of the two middle values is sufficient.
+2.  Even Sample Size: When the sample size is even, any value within the range of the two middle values is sufficient.
 
 ## Exercise (b)
 
@@ -52,14 +56,18 @@ As the sample size increases, the estimate becomes more precise, converging towa
 
 likelihood <- function(mu, data) {
   sigma <- sd(data)
-  # log-Likelihood: Product over the data with a given parameter of mu, then logged
+  # log-Likelihood: 
+  # Product over data with a given parameter of mu, then logged
   # -> Same as sum of log of function
   sum(log(exp((-1)*abs(data-mu)/sigma)/(2*sigma)))
 }
 
 mle <- function(data) {
   # find the MLE by finding the maximum of the log-Likelihood
-  result <- optimize(likelihood, interval = range(data), data = data, maximum = TRUE)
+  result <- optimize(likelihood, 
+                     interval = range(data), 
+                     data = data, 
+                     maximum = TRUE)
   result$maximum
 }
 
@@ -85,7 +93,7 @@ print(paste("Quantile function:", mle2.quantile))
 
 The R-Documentation for the function optimize states: "The method used is a combination of golden section search and successive parabolic interpolation, and was designed for use with continuous functions." Within a specified range of values the function can determine the point where the function reaches its minimum or maximum.
 
-For a Newton-Raphson algorithm, we need the derivative of the log-likelihood. In this case, we will end up with a sign function in the first derivative. This leads to the first and second derivative being undefined at points where μ equals xi. Consequently, the Newton-Raphson can't be applied practically.​
+For a Newton-Raphson algorithm, we need the derivative of the log-likelihood. In this case, we will end up with a sign function in the first derivative. This leads to the first and second derivative being undefined at points where mu equals xi. Consequently, the Newton-Raphson can't be applied practically.​
 
 Both the custom function and the quantile method show similar results, but for small sample sizes, the differences are more pronounced. In these cases, the custom function appears to perform slightly better in finding the MLE.
 
@@ -117,7 +125,8 @@ df.n20 <- data.frame(mle = mles.n20)
 ggplot(df.n20, aes(x = mle)) +
   geom_histogram(bins = 30, aes(y = after_stat(density))) +
   stat_function(fun = dnorm, 
-                args = list(mean = mean(df.n20$mle), sd = sd(df.n20$mle)), 
+                args = list(mean = mean(df.n20$mle), 
+                            sd = sd(df.n20$mle)), 
                 color = "red", size = 1) +
   labs(title = paste("Histogram of MLE for n =", 20),
        x = "MLE", 
@@ -136,7 +145,8 @@ df.n1000 <- data.frame(mle = mles.n1000)
 ggplot(df.n1000, aes(x = mle)) +
   geom_histogram(bins = 30, aes(y = after_stat(density))) +
   stat_function(fun = dnorm, 
-                args = list(mean = mean(df.n1000$mle), sd = sd(df.n1000$mle)), 
+                args = list(mean = mean(df.n1000$mle), 
+                            sd = sd(df.n1000$mle)), 
                 color = "red", size = 1) +
   labs(title = paste("Histogram of MLE for n =", 1000),
        x = "MLE", 
