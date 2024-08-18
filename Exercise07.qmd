@@ -1,8 +1,12 @@
 ---
-title: "Exercise07"
+title: "7 Generalized Linear Models"
 author: "Immanuel Klein"
 format: pdf
 editor: visual
+execute: 
+  warning: false
+header-includes:
+  - \pagenumbering{gobble}
 ---
 
 ```{r}
@@ -10,7 +14,7 @@ library("tidyverse")
 library("ggplot2")
 ```
 
-# 7 Generalized Linear Models
+This task is about analyzing the student-mat.csv dataset to identify variables that explain mathematics grades (`G1`, `G2`, `G3`). First, we assess the distribution of each grade using graphical tools and statistical tests to see whether they follow a normal or a Poisson distribution. We also check for over-dispersion and other anomalies. Then, we fit a GLM to explain `G1` using all explanatory variables (Model 1), assessing the significance of covariates and the model's goodness-of-fit through residual analysis. Next, we create a reduced model (Model 2) by selecting key covariates, and compare its performance to Model 1 using an analysis of deviance test. Lastly, we modify Model 2 to replace one variable (`goout`) with another (`Walc`), which creates Model 3, and compare the models to determine which has the best explanation for `G1`.
 
 ```{r}
 students.math <- read.csv("student-mat.csv", sep = ",")
@@ -57,7 +61,8 @@ mean.var.disp <- function(variable, variable.name) {
   
   # Check for overdispersion
   fit <- glm(variable ~ 1, family = poisson)
-  dispersion <- sum(residuals(fit, type = "pearson")^2) / fit$df.residual
+  dispersion <- sum(residuals(fit, type = "pearson")^2) / 
+    fit$df.residual
   cat(paste("Dispersion:", dispersion, "\n\n"))
 }
 
@@ -77,15 +82,15 @@ mean.var.disp(students.math$G2, "G2")
 mean.var.disp(students.math$G3, "G3")
 ```
 
--   **Normality:** If the histograms and Q-Q plots show deviations from a bell curve and the Shapiro-Wilk test has p-values \< 0.05, the grades do not follow a normal distribution. This is the case here. G1 performs best but still not good enough.
+-   Normality: If the histograms and Q-Q plots show deviations from a bell curve and the Shapiro-Wilk test has p-values \< 0.05, the grades do not follow a normal distribution. This is the case here. `G1` performs best but still not good enough.
 
--   **Poisson Distribution:** If the mean and variance are not close, and the dispersion value is significantly greater than 1, the data does not follow a Poisson distribution and may show signs of over-dispersion.
+-   Poisson Distribution: If the mean and variance are not close, and the dispersion value is significantly greater than 1, the data does not follow a Poisson distribution and may show signs of over-dispersion.
 
-    -   **G1**: Fits a Poisson distribution quite well. G1 could be reasonably approximated by a Poisson distribution.
+    -   G1: Fits a Poisson distribution quite well. `G1` could be reasonably approximated by a Poisson distribution.
 
-    -   **G2**: Shows slight over-dispersion, indicating a mild deviation from a Poisson distribution.
+    -   G2: Shows slight over-dispersion, indicating a mild deviation from a Poisson distribution.
 
-    -   **G3**: Exhibits significant over-dispersion, indicating that a Poisson distribution is not appropriate.
+    -   G3: Exhibits significant over-dispersion, indicating that a Poisson distribution is not appropriate.
 
 ## Exercise (b)
 
@@ -110,7 +115,8 @@ summary(model1)
 pearson.residuals <- residuals(model1, type = "pearson")
 
 # Calculate Anscombe residuals
-anscombe.residuals <- residuals(model1, type = "response")^(1/3)
+anscombe.residuals <- residuals(model1, type = "response")^
+  (1/3)
 
 # Plot Pearson residuals
 plot.residuals(pearson.residuals, "Pearson Residuals")
@@ -133,7 +139,7 @@ ggplot(data.frame(fitted = fitted(model1),
        y = "Pearson Residuals")
 ```
 
-### Significance of Covariates
+**Significance of Covariates**
 
 -   `failures` and `schoolsupyes`: Highly significant with p-values \< 0.001.
 
@@ -143,13 +149,13 @@ ggplot(data.frame(fitted = fitted(model1),
 
 -   Other Covariates: Not significant with p-values ≥ 0.1.
 
-### Goodness-of-Fit
+**Goodness-of-Fit**
 
 -   The AIC value of this model is 2000.2.
 
 -   Without comparison to other models (e.g., models 2 and 3), we cannot make definitive statements about the goodness-of-fit. The absolute AIC value alone is not sufficient for interpretation.
 
-### Residual Analysis
+**Residual Analysis**
 
 -   Q-Q Plots: For both Pearson and Anscombe residuals, there is noticeable deviation from the diagonal in the tails, indicating potential issues with normality.
 
@@ -161,7 +167,7 @@ ggplot(data.frame(fitted = fitted(model1),
 
 -   Residuals vs Fitted Values Plot: Residuals are fairly randomly distributed with no clear pattern, though they thin out at the upper and lower ends of the range.
 
-### Conclusion
+**Conclusion**
 
 -   The residuals are somewhat close to following a normal distribution, but there are noticeable deviations.
 
@@ -203,7 +209,7 @@ cat("AIC value of Model 3:", AIC(model3), "\n")
 
 ```
 
-### Model 2
+**Model 2**
 
 -   Significance of Covariates: All covariates are significant, with some even being very or highly significant.
 
@@ -211,7 +217,7 @@ cat("AIC value of Model 3:", AIC(model3), "\n")
 
 -   Analysis of Deviance Test: The p-value (0.1858) is greater than the conventional significance level (e.g., 0.05). This means that the reduction in deviance by adding the additional variables in Model 1 is not statistically significant. There is not enough evidence to suggest that the additional variables in Model 1 significantly improve the model fit compared to the simpler Model 2. Thus, Model 2, with fewer variables, is preferable.
 
-### Model 3
+**Model 3**
 
 -   Model 2 and Model 3 can be compared by the AIC value and the significance levels of the covariates.
 
