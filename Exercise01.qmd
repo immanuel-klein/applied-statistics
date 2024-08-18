@@ -1,8 +1,12 @@
 ---
-title: "Exercise01"
+title: "1 Sample statistics"
 author: "Immanuel Klein"
 format: pdf
 editor: visual
+execute: 
+  warning: false
+header-includes:
+  - \pagenumbering{gobble}
 ---
 
 ```{r}
@@ -10,19 +14,16 @@ library("tidyverse")
 library("ggplot2")
 ```
 
-# 1 Sample statistics
-
-[Data set](https://doi.org/10.24432/C56S3T)
+The task is about analyzing the white wine quality dataset from the UCI Machine Learning Repository, focusing on two variables: `volatile acidity` and `residual sugar`. The problem requires adding a binary variable indicating good or bad wine called `quality`. We then compare `volatile acidity` and `residual sugar` across wines that are good (`quality` \> 5) or bad (`quality` ≤ 5). For both variables, the analysis includes generating and interpreting histograms, summary statistics, boxplots, QQ-plots, and empirical distribution functions to compare the distributions between good and bad wines.
 
 ## Exercise (a)
 
-Reading the data into R:
-
 ```{r}
-#Reading the whole data set
+# Reading the whole data set
 winequality.white <- read.csv("wine+quality/winequality-white.csv", sep = ";")
 
-#Using only volatile.acidity and residual.sugar and adding binary variable good which is 1 if quality > 5 and 0 otherwise.
+# Using only volatile.acidity and residual.sugar 
+# and adding binary variable good which is 1 if quality > 5 and 0 otherwise.
 working.df <- winequality.white %>%
   mutate(good = ifelse(quality > 5, 1, 0)) %>%
   select(volatile.acidity, residual.sugar, good)
@@ -32,14 +33,10 @@ head(working.df)
 
 ## Exercise (b)
 
-### Histograms
-
-Plotting histograms of residual.sugar for good and bad wines using different methods available in R to choose the bin width.
-
-#### Default
+**Histograms**
 
 ```{r}
-#Plotting the histogram with the default bin width
+# Plotting the histogram with the default bin width
 ggplot(working.df) +
   aes(x = residual.sugar, fill = factor(good)) +
   geom_histogram(position = "identity", alpha = 0.5, bins = 30) + 
@@ -49,10 +46,8 @@ ggplot(working.df) +
        fill = "Good Wine")
 ```
 
-#### Sturge's Choice
-
 ```{r}
-#Plotting the histogram and calculating Sturge's bin width
+# Plotting the histogram and calculating Sturge's bin width
 ggplot(working.df) +
   aes(x = residual.sugar, fill = factor(good)) + 
   geom_histogram(position = "identity", alpha = 0.5, 
@@ -64,10 +59,8 @@ ggplot(working.df) +
        fill = "Good Wine")
 ```
 
-#### Freedman-Diaconis' Choice
-
 ```{r}
-#Plotting the histogram and calculating Freedman-Diaconis' bin width
+# Plotting the histogram and calculating Freedman-Diaconis' bin width
 ggplot(working.df) +
   aes(x = residual.sugar, fill = factor(good)) +
   geom_histogram(position = "identity", alpha = 0.5, 
@@ -79,14 +72,12 @@ ggplot(working.df) +
        fill = "Good Wine")
 ```
 
-#### Analysis
+As `residual sugar` increases, the number of both good and bad wines decreases. This trend might be due to underrepresentation of wines with high `residual sugar` in the dataset, or it could be a general thing that such wines are less represented in the population. Additionally, there is a noticeable increase in the number of bad wines with moderate levels of `residual sugar`. If we disregard the low `residual sugar` range - where both good and bad wines are most common - we can see that many bad wines have moderate `residual sugar` content.
 
-As residual sugar levels increase, the number of both good and bad wines decreases. This trend might be due to underrepresentation of wines with high residual sugar in the dataset, or it could be a general thing that such wines are less represented in the population. Additionally, there is a noticeable increase in the number of bad wines with moderate levels of residual sugar. If we disregard the low residual sugar range - where both good and bad wines are most common - we observe that many bad wines have moderate residual sugar content.
-
-### Summary Statistics
+**Summary Statistics**
 
 ```{r}
-summary_stats <- working.df %>%
+summary.stats <- working.df %>%
   group_by(good) %>%
   summarise(
     "Mean" = mean(residual.sugar, na.rm = TRUE),
@@ -97,22 +88,22 @@ summary_stats <- working.df %>%
     "max" = max(residual.sugar, na.rm = TRUE)
   )
 
-summary_stats
+summary.stats
 ```
 
--   The mean residual sugar is higher for bad wines (7.05) compared to good wines (6.06).
+-   The mean `residual sugar` is higher for bad wines (7.05) compared to good wines (6.06).
 
--   The median residual sugar is also higher for bad wines (6.625) compared to good wines (4.75). On average, bad wines seem to have slightly higher residual sugar content than good wines.
+-   The median `residual sugar` is also higher for bad wines (6.625) compared to good wines (4.75). On average, bad wines seem to have slightly higher `residual sugar` content than good wines.
 
--   The standard deviation is slightly higher for bad wines (5.28) compared to good wines (4.93), so there is more variability in the residual sugar content among bad wines.
+-   The standard deviation is slightly higher for bad wines (5.28) compared to good wines (4.93), so there is more variability in the `residual sugar` content among bad wines.
 
--   The IQR is also higher for bad wines (9.325) compared to good wines (7.4). This suggests that bad wines have a wider spread in their residual sugar in the central portion of the data.
+-   The IQR is also higher for bad wines (9.325) compared to good wines (7.4). This suggests that bad wines have a wider spread in their `residual sugar` in the central portion of the data.
 
 -   The minimum value of residual sugar is very similar for both categories (0.6 for bad wines and 0.7 for good wines).
 
--   The maximum value of residual sugar is much higher for good wines (65.8) compared to bad wines (23.5). This difference indicates that some good wines have extremely high levels of residual sugar (outliers).
+-   The maximum value of `residual sugar` is much higher for good wines (65.8) compared to bad wines (23.5). This difference indicates that some good wines have extremely high levels of `residual sugar` (outliers).
 
-### Boxplots
+**Box Plot**
 
 ```{r}
 boxplot <- ggplot(working.df) +
@@ -129,15 +120,19 @@ The box plot visualization reveals several key points consistent with the summar
 
 -   Good wines show a wider overall range and more outliers compared to bad wines.
 
--   Bad wines have a higher IQR, indicating greater variability in the middle 50% of their residual sugar content.
+-   Bad wines have a higher IQR, indicating greater variability in the middle 50% of their `residual sugar` content.
 
 -   The range of bad wines is entirely contained within the whiskers, showing fewer extreme values beyond the central data points.
 
-### QQ-Plot
+**QQ-Plot**
 
 ```{r}
-residual.sugar.good <- working.df %>% filter(good == 1) %>% pull(residual.sugar)
-residual.sugar.bad <- working.df %>% filter(good == 0) %>% pull(residual.sugar)
+residual.sugar.good <- working.df %>% 
+  filter(good == 1) %>% 
+  pull(residual.sugar)
+residual.sugar.bad <- working.df %>% 
+  filter(good == 0) %>% 
+  pull(residual.sugar)
 
 xlim.range <- range(residual.sugar.good, residual.sugar.bad)
 ylim.range <- range(residual.sugar.good, residual.sugar.bad)
@@ -154,19 +149,26 @@ abline(0, 1)
 
 -   If the distributions were identical, the points would fall on the 45-degree line. Here, we can see a smaller deviation from this line in the middle part and a strong deviation in the tails.
 
--   Almost exclusively, points fall slightly above the line (indicating higher residual sugar for bad wines).
+-   Almost exclusively, points fall slightly above the line (indicating higher `residual sugar` for bad wines).
 
 -   The outliers of good wines are apparent.
 
-### Empirical Distribution
+**Empirical Distribution**
 
 ```{r}
 working.good <- working.df %>% filter(good == 1)
 working.bad <- working.df %>% filter(good == 0)
 
 ggplot() +
-  stat_ecdf(data = working.good, aes(x = residual.sugar, color = "Good Wine"), geom = "step", linewidth = 2.5, alpha = 0.5) +
-  stat_ecdf(data = working.bad, aes(x = residual.sugar, color = "Bad Wine"), geom = "step", linewidth = 2.5, alpha = 0.5) +
+  stat_ecdf(data = working.good, 
+            aes(x = residual.sugar, color = "Good Wine"), 
+            geom = "step", 
+            linewidth = 2.5, 
+            alpha = 0.5) +
+  stat_ecdf(data = working.bad, 
+            aes(x = residual.sugar, color = "Bad Wine"), 
+            geom = "step", linewidth = 2.5, 
+            alpha = 0.5) +
   scale_color_manual(values = c("Good Wine" = "blue", "Bad Wine" = "red")) +
   labs(title = "Empirical Distribution Functions of Residual Sugar", 
        x = "Residual Sugar", 
@@ -174,15 +176,15 @@ ggplot() +
        color = "Wine Quality")
 ```
 
--   Since the median residual sugar content of good wines is lower, the curve rises more steeply initially, indicating that a higher proportion of good wines have lower residual sugar content.
+-   Since the median residual sugar content of good wines is lower, the curve rises more steeply initially, indicating that a higher proportion of good wines have lower `residual sugar` content.
 
--   Given the higher median residual sugar content of bad wines, the slope is less steep in the middle part compared to good wines, indicating that a lower proportion of bad wines have lower residual sugar content.
+-   Given the higher median residual sugar content of bad wines, the slope is less steep in the middle part compared to good wines, indicating that a lower proportion of bad wines have lower `residual sugar` content.
 
 ## Exercise (c)
 
 ```{r}
 # Summary statistics
-summary_stats <- working.df %>%
+summary.stats <- working.df %>%
   group_by(good) %>%
   summarise(
     "Mean" = mean(volatile.acidity, na.rm = TRUE),
@@ -193,7 +195,7 @@ summary_stats <- working.df %>%
     "max" = max(volatile.acidity, na.rm = TRUE)
   )
 
-summary_stats
+summary.stats
 
 # Creating a histogram
 ggplot(working.df) +
@@ -215,8 +217,12 @@ boxplot <- ggplot(working.df) +
 boxplot
 
 # Creating a QQ plot
-volatile.acidity.good <- working.df %>% filter(good == 1) %>% pull(volatile.acidity)
-volatile.acidity.bad <- working.df %>% filter(good == 0) %>% pull(volatile.acidity)
+volatile.acidity.good <- working.df %>% 
+  filter(good == 1) %>% 
+  pull(volatile.acidity)
+volatile.acidity.bad <- working.df %>% 
+  filter(good == 0) %>% 
+  pull(volatile.acidity)
 
 xlim.range <- range(volatile.acidity.good, volatile.acidity.bad)
 ylim.range <- range(volatile.acidity.good, volatile.acidity.bad)
@@ -234,8 +240,15 @@ working.good <- working.df %>% filter(good == 1)
 working.bad <- working.df %>% filter(good == 0)
 
 ggplot() +
-  stat_ecdf(data = working.good, aes(x = volatile.acidity, color = "Good Wine"), geom = "step", linewidth = 2.5, alpha = 0.5) +
-  stat_ecdf(data = working.bad, aes(x = volatile.acidity, color = "Bad Wine"), geom = "step", linewidth = 2.5, alpha = 0.5) +
+  stat_ecdf(data = working.good, 
+            aes(x = volatile.acidity, color = "Good Wine"), 
+            geom = "step", 
+            linewidth = 2.5, 
+            alpha = 0.5) +
+  stat_ecdf(data = working.bad, 
+            aes(x = volatile.acidity, color = "Bad Wine"), 
+            geom = "step", 
+            linewidth = 2.5, alpha = 0.5) +
   scale_color_manual(values = c("Good Wine" = "blue", "Bad Wine" = "red")) +
   labs(title = "Empirical Distribution Functions of Volatile Acidity", 
        x = "Residual Sugar", 
@@ -243,14 +256,14 @@ ggplot() +
        color = "Wine Quality")
 ```
 
-The summary statistics suggest that good wines have lower volatile acidity on average, with less variability and fewer extreme values compared to bad wines. This reflects in the histograms, boxplots, QQ plots, and ECDFs as follows:
+The summary statistics suggest that good wines have lower `volatile acidity` on average, with less variability and fewer extreme values compared to bad wines. This reflects in the histograms, boxplots, QQ plots, and ECDFs as follows:
 
--   **Histograms:** Good wines have a sharper peak and a little bit of a narrower spread.
+-   Histograms: Good wines have a sharper peak and a little bit of a narrower spread.
 
--   **Boxplots:** Good wines have lower medians and a somewhat lesser spread with fewer "extreme" outliers compared to bad wines.
+-   Boxplots: Good wines have lower medians and a somewhat lesser spread with fewer "extreme" outliers compared to bad wines.
 
--   **QQ Plots:** Good wines shows consistently lower values compared to bad wines for the same quantiles resulting in all points being above the diagonal.
+-   QQ Plots: Good wines shows consistently lower values compared to bad wines for the same quantiles resulting in all points being above the diagonal.
 
--   **ECDFs:** Good wines' ECDF start to rise at a lower value.
+-   ECDFs: Good wines' ECDF start to rise at a lower value.
 
-Lower volatile acidity seems to be associated with higher quality wines, as could have been expected.
+Lower `volatile acidity` seems to be associated with higher quality wines, as could have been expected.
