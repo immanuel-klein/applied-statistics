@@ -1,25 +1,28 @@
 ---
-title: "Exercise05"
+title: "5 Penalized Regression"
 author: "Immanuel Klein"
 format: pdf
 editor: visual
+execute: 
+  warning: false
+header-includes:
+  - \pagenumbering{gobble}
 ---
 
 ```{r}
 library(tidyverse)
 library(ggplot2)
-library(ISLR)
 library(glmnet)
+library(ISLR)
 ```
 
-# 5 Penalized Regression
+This task is about analyzing a dataset of baseball players to predict their salaries using ridge and lasso regression. We start by loading and cleaning the data to include only complete cases. Next, the condition number of the design matrix XtX is calculated to check for multicollinearity, with and without standardizing the variables. Standard linear regression and ridge regression with a specific value of lambda are then compared to evaluate the impact on coefficient sizes. To choose the optimal lambda, we split the data into training and test sets, and calculate mean squared prediction errors across lambda values. The optimal lambda is used to fit ridge and lasso models on the data to compare the coefficients, particularly to see whether lasso regression results in any coefficients being exactly zero.
 
 ## Exercise (a)
 
 ```{r}
 # Loading the dataset and creating a new dataset 
 # containing only those players for which all data is available.
-
 data(Hitters)
 hitters.clean <- na.omit(Hitters)
 
@@ -40,43 +43,35 @@ XtX <- t(X) %*% X
 # Compute eigenvalues of XtX
 eigenvalues <- eigen(XtX)$values
 
-# Calculate the condition number (ratio of the largest to smallest eigenvalue)
+# Calculate condition number
 condition.number <- max(eigenvalues) / min(eigenvalues)
 condition.number
 
-# Standardize the design matrix
+# Standardize design matrix
 X.standardized <- scale(X)
 
-# Compute XtX for the standardized design matrix
+# Compute XtX
 XtX.standardized <- t(X.standardized) %*% X.standardized
 
-# Compute eigenvalues of the standardized XtX
+# Compute eigenvalues of standardized XtX
 eigenvalues.standardized <- eigen(XtX.standardized)$values
 
-# Calculate the condition number for the standardized design matrix
-condition.number.standardized <- max(eigenvalues.standardized) / min(eigenvalues.standardized)
+# Calculate condition number for standardized matrix
+condition.number.standardized <- 
+  max(eigenvalues.standardized) / min(eigenvalues.standardized)
 condition.number.standardized
 ```
 
--   **Condition Number of Original Matrix** XTX:
-
-    -   A high condition number indicates that the matrix XTXXTX is nearly singular and that the columns of XX are nearly linearly dependent, which can lead to numerical instability in regression analysis.
-
-<!-- -->
-
--   **Standardizing the Design Matrix**:
-
-    -   Standardizing the design matrix such that each column (except the intercept) has a mean of zero and variance of one typically reduces the condition number, making the matrix XTXXTX better conditioned.
-
-    -   This can help mitigate multicollinearity and improve numerical stability.
+-   With 424299885, the condition number of the original matrix is relatively high (especially compared to 6131.339). A high condition number indicates that the columns of X are nearly linearly dependent, which could lead to numerical instability in regression analysis.
+-   After standardizing the design matrix such that each column (except the intercept) has a mean of zero and variance of one, the condition number has decreased immensely, making the matrix XTX better conditioned. This can help mitigate multicollinearity and improve numerical stability.
 
 ## Exercise (c)
 
 ```{r}
-
-# Separate the response variable (Salary) and predictor variables (all others)
-# y <- HittersClean$Salary
-# X <- model.matrix(Salary ~ ., data=HittersClean)[, -1]  # Removing the intercept column
+# Separate salary and predictors
+y <- hitters.clean$Salary
+# Remove intercept
+X <- model.matrix(Salary ~ ., data = hitters.clean)[, -1]
 
 # Standard Linear Regression Model
 linear.models <- lm(Salary ~ ., data=hitters.clean)
@@ -85,12 +80,15 @@ print("Standard Linear Model Coefficients:")
 print(linear.coefficients)
 
 # Ridge Regression Model with λ = 70
-ridge.model <- glmnet(X, hitters.clean$Salary, alpha = 0, lambda = 70, standardize = TRUE)
+ridge.model <- glmnet(X, 
+                      hitters.clean$Salary, 
+                      alpha = 0, 
+                      lambda = 70, 
+                      standardize = TRUE)
 ridge.coefficients <- coef(ridge.model)
 print("Ridge Regression Model Coefficients with λ = 70:")
 print(ridge.coefficients)
 
-# Compare the size of the coefficients
 comparison <- data.frame(
   Variable = rownames(ridge.coefficients),
   Linear = as.vector(linear.coefficients),
@@ -101,61 +99,61 @@ print(comparison)
 
 ```
 
--   **Standard Linear Model Coefficients**:
+-   The intercept in the ridge regression model is smaller (around 33.64) compared to the linear model (163.10). Ridge regression shrinks the intercept due to the regularization effect.
 
-    -   These coefficients are obtained by fitting a regular linear regression model without any regularization. They can be large in magnitude if there is multicollinearity among the predictors.
+-   The coefficients in the ridge regression model are generally smaller than to those in the linear model. This is because ridge regression penalizes the size of the coefficients, which leads to shrinking.
 
--   **Ridge Regression Coefficients**:
+-   Some coefficients in the ridge regression model have a different sign than in the linear model.
 
-    -   Ridge regression applies L2L2 regularization, which penalizes the size of the coefficients. The λλ parameter controls the strength of this penalty.
-
-    -   With λ=70λ=70, the ridge regression coefficients are expected to be shrunk towards zero compared to the standard linear model coefficients.
+-   Ridge regression tends to reduce the coefficients towards zero, which leads to more stable coefficients that are less sensitive to multicollinearity.
 
 ## Exercise (d)
 
 ```{r}
 set.seed(1122)
-train.indices <- sample(1:nrow(hitters.clean), size = 0.7 * nrow(hitters.clean))
+train.indices <- sample(1:nrow(hitters.clean), 
+                        size = 0.7 * nrow(hitters.clean))
 X.train <- X[train.indices, ]
 y.train <- hitters.clean$Salary[train.indices]
 X.test <- X[-train.indices, ]
 y.test <- hitters.clean$Salary[-train.indices]
 
-# Fit ridge regression models for a range of lambda values using cross-validation
-lambda.seq <- 10^seq(10, -2, length = 100)  # Sequence of lambda values
-ridge.cv <- cv.glmnet(X.train, y.train, alpha = 0, lambda = lambda.seq, standardize = TRUE)
+# Fit ridge regression models
+lambda.seq <- 10^seq(10, -2, length = 100)
+ridge.cv <- cv.glmnet(X.train, 
+                      y.train, 
+                      alpha = 0, 
+                      lambda = lambda.seq, 
+                      standardize = TRUE)
 
-# Find the best lambda based on cross-validation
+# Find best lambda with cross-validation & use it
 best.lambda <- ridge.cv$lambda.min
-print(paste("Best lambda:", best.lambda))
+paste("Best lambda:", best.lambda)
+ridge.best <- glmnet(X.train, 
+                     y.train, 
+                     alpha = 0, 
+                     lambda = best.lambda, 
+                     standardize = TRUE)
 
-# Fit the ridge regression model using the best lambda
-ridge.best <- glmnet(X.train, y.train, alpha = 0, lambda = best.lambda, standardize = TRUE)
+# Predict on test set & MSE
+predictions <- predict(ridge.best, 
+                       s = best.lambda, 
+                       newx = X.test)
 
-# Predict on the test set
-predictions <- predict(ridge.best, s = best.lambda, newx = X.test)
-
-# Calculate the mean squared prediction error on the test set
 mse <- mean((y.test - predictions)^2)
-paste("Mean Squared Prediction Error on the test set:", mse)
 
-# Compare the size of the coefficients in the ridge model with the best lambda
+# Coefficients in model with best lambda
 ridge.coefficients.best <- coef(ridge.best)
-paste("Ridge Regression Model Coefficients with best lambda:", ridge.coefficients.best)
 
-# Fit a standard linear regression model for comparison
+# Standard linear regression model for comparison
 linear.model <- lm(Salary ~ ., data = hitters.clean[train.indices, ])
 linear.coefficients <- coef(linear.model)
-"Standard Linear Model Coefficients:"
-linear.coefficients
 
-# Create a comparison of coefficients
 comparison <- data.frame(
-  Variable = rownames(ridge.coefficients_best),
+  Variable = rownames(ridge.coefficients.best),
   Linear = as.vector(linear.coefficients),
-  Ridge = as.vector(ridge.coefficients_best)
+  Ridge = as.vector(ridge.coefficients.best)
 )
-"Comparison of Coefficients:"
 comparison
 ```
 
@@ -163,105 +161,99 @@ comparison
 
 ```{r}
 ridge.mse <- function(lambda) {
-  ridge.model <- glmnet(X.train, y.train, alpha = 0, lambda = lambda, standardize = TRUE)
+  ridge.model <- glmnet(X.train, 
+                        y.train, 
+                        alpha = 0, 
+                        lambda = lambda, 
+                        standardize = TRUE)
   predictions <- predict(ridge.model, s = lambda, newx = X.test)
   mse <- mean((y.test - predictions)^2)
   return(mse)
 }
 
-# Define the sequence of lambda values
 lambda.seq <- 10^seq(10, -2, length = 100)
 
-# Calculate mean squared prediction error for each lambda
+# MSE for each lambda
 mse.values <- sapply(lambda.seq, ridge.mse)
 
-# Plot the results
-ggplot(data.frame(log.lambda = log(lambda.seq), mse = mse.values), aes(x = log.lambda, y = mse)) +
+ggplot(data.frame(log.lambda = log(lambda.seq), mse = mse.values), 
+       aes(x = log.lambda, y = mse)) +
   geom_line() +
   geom_point() +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 40)) +
   labs(x = "log(lambda)", y = "Mean Squared Prediction Error", title = "Mean Squared Prediction Error vs. log(lambda)")
 
-# Identify the lambda that minimizes the mean squared prediction error
+# Identify lambda that minimizes MSE
 lambda.opt <- lambda.seq[which.min(mse.values)]
 lambda.opt
 ```
 
-log(lamba) ca 8.2 at lowest point -\> lambda ca 3700
+At the lowest point of the plot, log(lambda) is around 8.2, which means that the optimal lambda is somewhere around 3700. In fact, the optimal value is 3764.936.
 
 ## Exercise (f)
 
 ```{r}
-# Fit a ridge regression with the optimal lambda on all the data
-ridge.final <- glmnet(X, y, alpha = 0, lambda = lambda.opt, standardize = TRUE)
+# Fit a ridge regression with ptimal lambda on all data
+ridge.final <- glmnet(X, 
+                      y, 
+                      alpha = 0, 
+                      lambda = lambda.opt, 
+                      standardize = TRUE)
 
-# Extract the coefficients
 final.coefficients <- coef(ridge.final)
 
-# Display the coefficients
 print("Ridge Regression Coefficients with lambda_opt:")
-print(final.coefficients) 
-
-# Identify the most important variables (largest absolute coefficients)
-important.variables <- sort(abs(as.vector(final.coefficients)), decreasing = TRUE)
-print("Most Important Variables:")
-print(important.variables)
-
-# Check if there are any coefficients that are exactly zero
-zero.coefficients <- final.coefficients[final.coefficients == 0]
-print("Coefficients that are exactly zero:")
-print(zero.coefficients)
-
+print(final.coefficients)
 ```
+
+-   The most important variables are (in order of their magnitude): `DivisionW`, `Years`, `NewLeagueN`, `LeagueN`, `HmRun`. They all have values above 1.
+
+-   Although there are coefficients with values very close to 0 (e. g. Assists), there are no coefficients that equal zero exactly.
 
 ## Exercise (g)
 
 ```{r}
 lasso.mse <- function(lambda) {
-  lasso.model <- glmnet(X.train, y.train, alpha = 1, lambda = lambda, standardize = TRUE)
+  lasso.model <- glmnet(X.train, 
+                        y.train, 
+                        alpha = 1, 
+                        lambda = lambda, 
+                        standardize = TRUE)
   predictions <- predict(lasso.model, s = lambda, newx = X.test)
   mse <- mean((y.test - predictions)^2)
   return(mse)
 }
-
-# Define the sequence of lambda values
 lambda.seq <- 10^seq(10, -2, length = 100)
 
-# Calculate mean squared prediction error for each lambda
+# Calculate MSE for each lambda
 mse.values <- sapply(lambda.seq, lasso.mse)
 
-# Plot the results
-ggplot(data.frame(log.lambda = log(lambda.seq), mse = mse.values), aes(x = log.lambda, y = mse)) +
+ggplot(data.frame(log.lambda = log(lambda.seq), mse = mse.values), 
+       aes(x = log.lambda, y = mse)) +
   geom_line() +
   geom_point() +
   scale_x_continuous(breaks = scales::pretty_breaks(n = 40)) +
-  labs(x = "log(lambda)", y = "Mean Squared Prediction Error", title = "Mean Squared Prediction Error vs. log(lambda)")
+  labs(x = "log(lambda)", 
+       y = "Mean Squared Prediction Error", 
+       title = "Mean Squared Prediction Error vs. log(lambda)")
 
-# Identify the lambda that minimizes the mean squared prediction error
+# Identify lambda that minimizes MSE
 lambda.opt.lasso <- lambda.seq[which.min(mse.values)]
 lambda.opt.lasso
 
-# Fit a lasso regression with the optimal lambda on all the data
-lasso.final <- glmnet(X, y, alpha = 1, lambda = lambda.opt.lasso, standardize = TRUE)
+# Fit lasso regression with optimal lambda on all data
+lasso.final <- glmnet(X, 
+                      y, 
+                      alpha = 1, 
+                      lambda = lambda.opt.lasso, 
+                      standardize = TRUE)
 
-# Extract the coefficients
 final.coefficients.lasso <- coef(lasso.final)
 
-# Display the coefficients
 print("Lasso Regression Coefficients with lambda_opt:")
 print(final.coefficients.lasso)
-
-# Identify the most important variables (largest absolute coefficients)
-important.vars.lasso <- sort(abs(as.vector(final.coefficients.lasso)), decreasing = TRUE)
-print("Most Important Variables:")
-print(important.vars.lasso)
-
-# Check if there are any coefficients that are exactly zero
-zero.coefficients.lasso <- final.coefficients.lasso[final.coefficients.lasso == 0]
-print("Coefficients that are exactly zero:")
-print(zero.coefficients.lasso)
 ```
 
-log(lambda) ca 5,2 -\> lambda ca 180
+-   At the lowest point of the plot, log(lambda) is around 5.2, which means that the optimal lambda is somewhere around 180. In fact, the optimal value is 174.7528.
 
-zreo.coefficients überarbeiten und dann aufgabe f angleichen
+-   Using lasso regression regression, now all coefficients except `Hits`, `CRuns`, and `CRBI` are equal to 0.
