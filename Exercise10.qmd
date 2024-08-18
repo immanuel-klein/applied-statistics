@@ -1,8 +1,12 @@
 ---
-title: "Exercise07"
+title: "10 Time Series"
 author: "Immanuel Klein"
 format: pdf
 editor: visual
+execute: 
+  warning: false
+header-includes:
+  - \pagenumbering{gobble}
 ---
 
 ```{r}
@@ -10,7 +14,7 @@ library("tidyverse")
 library("ggplot2")
 ```
 
-# 10 Time Series
+The task is about analyzing the weekly cardiovascular mortality data from Los Angeles County (1970-1979) using time series models. First, we fit an AR(2) model using linear regression, and use the coefficients to forecast the next four weeks along with a 95% confidence interval. We then apply The Yule-Walker method to estimate the AR(2) model, and compare the results, including coefficient estimates and standard errors, to those from linear regression. We alse forecast using the Yule-Walker estimates. Additionally, we compare the standard errors from linear regression with their asymptotic approximations. Finally, we fit an ARMA(2,2) model to determine if the added complexity improves the fit compared to the simpler AR(2) model.
 
 ## Exercise (a)
 
@@ -20,178 +24,154 @@ library(astsa)
 # Load the cmort dataset
 data(cmort)
 
-# Initialize the dataframe with NA values
-df <- data.frame(matrix(NA, ncol=3, nrow=length(cmort)-2))
-names(df) <- c("x", "x1", "x2")
+# Prepare data for AR(2) model
+# Create a data frame with original series and its lags
+n <- length(cmort)
+df.cmort <- data.frame(
+  y = cmort[3:n],
+  y1 = cmort[2:(n-1)],
+  y2 = cmort[1:(n-2)]
+)
 
-# Populate the dataframe with the appropriate values
-for (i in 1:(length(cmort)-2)) {
-    df[i, ] <- cmort[c(i, i+1, i+2)]
-}
-
-# Fit the linear model
-ar2.model <- lm(x ~ x1 + x2, data = df)
-
-# Display the summary of the model
+# Fit  AR(2) model with linear regression
+ar2.model <- lm(y ~ y1 + y2, data = df.cmort)
 summary(ar2.model)
 ```
-
-Vergleichen mit Code in VL.
 
 ## Exercise (b)
 
 ```{r}
-# Extract the estimated coefficients from the AR(2) model
+# Extract coefficients from AR(2) model
 coefficients <- coef(ar2.model)
 
-# Initialize a vector to store the forecasted values
+# Initialize a vector to store forecasted values
 forecast <- numeric(4)
 
-# Use the last two observed values of cmort
+# Use last two observed values of cmort
 x1 <- cmort[length(cmort) - 1]
 x2 <- cmort[length(cmort)]
 
 # Forecast the next 4 weeks
 for (i in 1:4) {
     forecast[i] <- 
-      coefficients[1] + coefficients[2] * x1 + coefficients[3] * x2
-    # Update the lagged values for the next iteration
+      coefficients[1] + 
+      coefficients[2] * x1 + 
+      coefficients[3] * x2
     x2 <- x1
     x1 <- forecast[i]
 }
 
-# Calculate the residual standard error from the model
+# Get residual standard error from the model
 residual.se <- summary(ar2.model)$sigma
 
-# Calculate the 95% confidence intervals
+# Calculate 95% confidence intervals
 alpha <- 0.05
 z <- qnorm(1 - alpha/2)
 lower.bound <- forecast - z * residual.se
 upper.bound <- forecast + z * residual.se
 
-# Display the forecast and the confidence intervals
-forecast.results <- data.frame(
+data.frame(
     Forecast = forecast,
     Lower95.CI = lower.bound,
     Upper95.CI = upper.bound
 )
-
-forecast.results
-
 ```
 
 ## Exercise (c)
 
 ```{r}
-# Estimate the AR(2) model using the Yule-Walker method
+# Estimate AR(2) model withbYule-Walker method
 yw.model <- ar.yw(cmort, order.max = 2)
 
-# Extract coefficients and their standard errors from the Yule-Walker estimation
+# Extract coefficients and their standard errors from YW
 yw.coefficients <- yw.model$ar
 yw.se <- sqrt(diag(yw.model$asy.var.coef))
 
-# Extract coefficients and standard errors from the linear regression model
+# Extract coefficients and standard errors from linear regr
 lr.coefficients <- coef(ar2.model)[2:3]
 lr.se <- summary(ar2.model)$coefficients[2:3, 2]
 
-# Create a comparison dataframe
-comparison <- data.frame(
-    Method = c("Linear Regression", "Linear Regression", "Yule-Walker", "Yule-Walker"),
+# Comparison dataframe
+data.frame(
+    Method = c("Linear Regression", 
+               "Linear Regression", 
+               "Yule-Walker", 
+               "Yule-Walker"),
     Coefficient = rep(c("x1", "x2"), 2),
     Estimate = c(lr.coefficients, yw.coefficients),
     Std.Error = c(lr.se, yw.se)
 )
-
-print(comparison)
 ```
+
+-   Regarding the coefficients, the two methods provide only slightly different estimates for the AR coefficients. These differences could be because of the different underlying assumptions and estimation techniques used.
+
+-   The standard errors from the Yule-Walker method are marginally larger, suggesting there might be more uncertainty in the coefficient estimates compared to the linear regression.
+
+-   All in all, the difference between the two estimations is only very small.
 
 ## Exercise (d)
 
 ```{r}
-# Initialize a vector to store the forecasted values using Yule-Walker estimates
+# Basically repition of (b) with some small adjustments.
+
+# Initialize a vector to store forecasted values
 forecast.yw <- numeric(4)
 
-# Use the last two observed values of cmort
+# Use last two observed values of cmort
 x1 <- cmort[length(cmort) - 1]
 x2 <- cmort[length(cmort)]
 
-# Forecast the next 4 weeks using Yule-Walker estimates
+# Forecast the next 4 weeks
 for (i in 1:4) {
     forecast.yw[i] <- 
       yw.coefficients[1] * x1 + yw.coefficients[2] * x2
-    # Update the lagged values for the next iteration
     x2 <- x1
     x1 <- forecast.yw[i]
 }
 
-# Calculate the residual standard error from the Yule-Walker model
+# Get residual standard error from Yule-Walker model
 residual.se.yw <- sqrt(yw.model$var.pred)
 
-# Calculate the 95% confidence intervals
+# Calculate 95% confidence intervals
 alpha <- 0.05
 z <- qnorm(1 - alpha/2)
 lower.bound.yw <- forecast.yw - z * residual.se.yw
 upper.bound.yw <- forecast.yw + z * residual.se.yw
 
-# Display the forecast and the confidence intervals
-forecast.results.yw <- data.frame(
+data.frame(
     Forecast = forecast.yw,
     Lower.95.CI = lower.bound.yw,
     Upper.95.CI = upper.bound.yw
 )
 
-print(forecast.results.yw)
-
 ```
 
 ## Exercise (e)
 
-```{r}
-# Extract the asymptotic variance-covariance matrix of the Yule-Walker estimators
-asy.var.cov <- yw.model$asy.var.coef
+![](images/AsymptoticApproximations.png)
 
-# Calculate the standard errors (square root of the diagonal elements of the variance-covariance matrix)
-asy.se.yw <- sqrt(diag(asy.var.cov))
-
-# Create a comparison dataframe
-comparison <- data.frame(
-    Method = c("Linear Regression", "Linear Regression", "Yule-Walker Asymptotic", "Yule-Walker Asymptotic"),
-    Coefficient = rep(c("x1", "x2"), 2),
-    Estimate = c(lr.coefficients, yw.coefficients),
-    Std_Error = c(lr.se, asy.se.yw)
-)
-
-print(comparison)
-```
-
-Compare with asymptotic method of slides?
+The standard errors from the linear regression are smaller compared to the asymptotic standard errors. This suggests that the linear regression estimates are more precise in this sample than what the asymptotic theory would predict.
 
 ## Exercise (f)
 
 ```{r}
-# Fit the ARMA(2,2) model
+# Fit ARMA(2,2) model
 arma22.model <- arima(cmort, order = c(2, 0, 2))
 
-# Display the summary of the ARMA(2,2) model
-summary(arma22.model)
-
-# Extract AIC and BIC values for both models
+# Extract AIC and BIC for both models
 aic.ar2 <- AIC(ar2.model)
 bic.ar2 <- BIC(ar2.model)
 
 aic.arma22 <- AIC(arma22.model)
 bic.arma22 <- BIC(arma22.model)
 
-# Create a comparison dataframe
-model.comparison <- data.frame(
+# Comparison dataframe
+data.frame(
     Model = c("AR(2)", "ARMA(2,2)"),
     AIC = c(aic.ar2, aic.arma22),
     BIC = c(bic.ar2, bic.arma22)
 )
 
-print(model.comparison)
-
-# Conduct Ljung-Box test for the residuals of the ARMA(2,2) model
-Box.test(arma22.model$residuals, lag = 20, type = "Ljung-Box")
-
 ```
+
+Both the AIC and BIC values being lower for the simpler model indicates that the AR(2) model provides a better fit compared to the ARMA(2,2) model. The AR(2) model provides a better fit without the additional complexity that the ARMA(2,2) model introduces.
