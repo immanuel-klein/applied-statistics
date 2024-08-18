@@ -1,0 +1,248 @@
+---
+title: "8 Mixed Effects Models and Small Area Estimation"
+author: "Immanuel Klein"
+format: pdf
+editor: visual
+execute: 
+  warning: false
+header-includes:
+  - \pagenumbering{gobble}
+---
+
+```{r}
+library("tidyverse")
+library("ggplot2")
+```
+
+This task is about estimating the total field size of corn and soybeans across various counties in Iowa by using both linear and mixed-effects models. We first fit a linear model for both corn and soybeans by county, using the number of pixels as the predictor for hectares of crops. We then extended this to a linear mixed-effects model, using county-level random effects for the shared variability within each county. With this extended model, we compare different predictors such as BLUP (Best Linear Unbiased Predictor) and survey-based estimates in their accuracy and reliability. Finally, we plot the total estimated field size of corn and soybeans on a map together.
+
+## Exercise (a)
+
+```{r}
+library(JoSAE)
+library(nlme)
+
+data(landsat)
+
+corn.model <- 
+  lmList(HACorn ~ PixelsCorn | CountyName, data = landsat)
+
+soybeans.model <- 
+  lmList(HASoybeans ~ PixelsSoybeans | CountyName, data = landsat)
+
+summary(corn.model)
+summary(soybeans.model)
+```
+
+-   It only makes sense to presume that `PixelsCorn` can be predicted with `HACorn` while `PixelsSoybeans` can be predicted with `HASoybeans`. The assumption is that the number of pixels corresponding to each crop in the satellite images is directly related to the area covered by that crop.
+
+-   Nonetheless, there might be some limitations:
+
+    -   The model is fitted to each county separately, which might lead to overfitting. The model may not generalize well to other counties that are not included in the dataset.
+
+    -   The model assumes that the observations are independent. However, if there is some correlation between segments within the same county, this assumption might be violated.
+
+    -   There may be other factors that influence the hectares of crops (e. g., weather conditions such as clouds) that are not included in the model.
+
+## Exercise (b)
+
+```{r}
+corn.model.random <- lme(
+  # Fixed effects, same assumption as in (a)
+  HACorn ~ PixelsCorn,
+  # Random effect that is shared for each county
+  random = ~ 1 | CountyName,
+  data = landsat
+  )
+
+# Fit the mixed-effects model for soybeans
+soybeans.model.random <- lme(
+  # Fixed effects, same assumption as in (a)
+  HASoybeans ~ PixelsSoybeans,
+  # Random effect that is shared for each county
+  random = ~ 1 | CountyName,
+  data = landsat
+  )
+
+summary(corn.model.random)
+summary(soybeans.model.random)
+```
+
+-   Both crops have significant pixel coefficients, which indicates that there is a significant relationship between the number of pixels and hectares for both corn and soybeans.
+-   The intercepts are not significant in both models, which seems to be common in contexts where the predictors (like pixels) capture most of the variability. Thus, the intercept gets less interpretable.
+-   Lower AIC and BIC values in the soybeans model indicate a slightly better fit compared to the corn model. Pixel data might be a more reliable predictor of soybean hectares than corn hectares, maybe because of differences in growth patterns and such.
+
+## Exercise (c)
+
+```{r}
+# Variance of error term and random effect
+sigma.v2 <- as.numeric(VarCorr(corn.model.random)["(Intercept)", "Variance"])
+sigma.e2 <- as.numeric(corn.model.random$sigma^2)
+
+# Covariance matrix of beta.hat
+V.beta.hat <- vcov(corn.model.random)
+
+# Extract slope per county from second model
+beta.hat.corn <- data.frame(
+  CountyName = rownames(coef(corn.model.random)[2]),
+  PredictorValue = coef(corn.model.random)[2]$PixelsCorn
+)
+
+results.corn <- landsat %>%
+  group_by(CountyName) %>%
+  summarize(
+    xip.mean = first(MeanPixelsCorn),
+    xi.mean = mean(PixelsCorn, na.rm = TRUE),
+    yi.mean = mean(HACorn, na.rm = TRUE),
+    n = n()
+  ) %>%
+  left_join(beta.hat.corn, by = "CountyName") %>%
+  mutate(
+    gamma.i = sigma.v2 / (sigma.v2 + (sigma.e2 / n)),
+    RP.Corn = xip.mean * PredictorValue,
+    ASP.Corn = xip.mean * PredictorValue + 
+      (yi.mean - xi.mean * PredictorValue),
+    BLUP.Corn = xip.mean * PredictorValue + 
+      gamma.i * (yi.mean - xi.mean * PredictorValue),
+    SP.Corn = yi.mean,
+    # MSE for Regression predictor for corn
+    MSE.RP.Corn = (1 - 0)^2 * sigma.v2 + (0^2 * sigma.e2) / n +
+              2 * (0 - gamma.i) * 
+              (xip.mean - 0 * xi.mean)^2 * V.beta.hat[2, 2] +
+              (xip.mean - 0 * xi.mean)^2 * V.beta.hat[2, 2],
+    # MSE for Adjusted Survey Predictor for corn
+    MSE.ASP.Corn = (1 - 1)^2 * sigma.v2 + (1^2 * sigma.e2) / n +
+              2 * (1 - gamma.i) * 
+              (xip.mean - 1 * xi.mean)^2 * V.beta.hat[2, 2] +
+              (xip.mean - 1 * xi.mean)^2 * V.beta.hat[2, 2],
+    # MSE for BLUP for corn
+    MSE.BLUP.Corn = (1 - gamma.i)^2 * sigma.v2 + (gamma.i^2 * sigma.e2) / n +
+              2 * (gamma.i - gamma.i) * 
+              (xip.mean - gamma.i * xi.mean)^2 * V.beta.hat[2, 2] +
+              (xip.mean - gamma.i * xi.mean)^2 * V.beta.hat[2, 2]
+  ) %>%
+  select(CountyName, 
+         RP.Corn, 
+         MSE.RP.Corn, 
+         ASP.Corn, 
+         MSE.ASP.Corn, 
+         BLUP.Corn, 
+         MSE.BLUP.Corn, 
+         SP.Corn)
+
+results.corn
+
+# Do same thing for soy
+# Variance of error term and random effect
+sigma.v2 <- as.numeric(VarCorr(soybeans.model.random)["(Intercept)", "Variance"])
+sigma.e2 <- as.numeric(soybeans.model.random$sigma^2)
+
+# Covariance matrix of beta.hat
+V.beta.hat <- vcov(soybeans.model.random)
+
+beta.hat.soybeans <- data.frame(
+  CountyName = rownames(coef(soybeans.model.random)[2]),
+  PredictorValue = coef(soybeans.model.random)[2]$PixelsSoybeans
+)
+
+results.soybeans <- landsat %>%
+  group_by(CountyName) %>%
+  summarize(
+    xip.mean = first(MeanPixelsSoybeans),
+    xi.mean = mean(PixelsSoybeans, na.rm = TRUE),
+    yi.mean = mean(HASoybeans, na.rm = TRUE),
+    n = n()
+  ) %>%
+  left_join(beta.hat.soybeans, by = "CountyName") %>%
+  mutate(
+    gamma.i = sigma.v2 / (sigma.v2 + (sigma.e2 / n)),
+    RP.Soybeans = xip.mean * PredictorValue,
+    ASP.Soybeans = xip.mean * PredictorValue + 
+      (yi.mean - xi.mean * PredictorValue),
+    BLUP.Soybeans = xip.mean * PredictorValue + 
+      gamma.i * (yi.mean - xi.mean * PredictorValue),
+    SP.Soybeans = yi.mean,
+    # MSE for Regression predictor for soy
+    MSE.RP.Soybeans = (1 - 0)^2 * sigma.v2 + (0^2 * sigma.e2) / n +
+              2 * (0 - gamma.i) * 
+              (xip.mean - 0 * xi.mean)^2 * V.beta.hat[2, 2] +
+              (xip.mean - 0 * xi.mean)^2 * V.beta.hat[2, 2],
+    # MSE for Adjusted Survey Predictor for soy
+    MSE.ASP.Soybeans = (1 - 1)^2 * sigma.v2 + (1^2 * sigma.e2) / n +
+              2 * (1 - gamma.i) * 
+              (xip.mean - 1 * xi.mean)^2 * V.beta.hat[2, 2] +
+              (xip.mean - 1 * xi.mean)^2 * V.beta.hat[2, 2],
+    # MSE for BLUP for soy
+    MSE.BLUP.Soybeans = (1 - gamma.i)^2 * sigma.v2 + (gamma.i^2 * sigma.e2) / n +
+              2 * (gamma.i - gamma.i) * 
+              (xip.mean - gamma.i * xi.mean)^2 * V.beta.hat[2, 2] +
+              (xip.mean - gamma.i * xi.mean)^2 * V.beta.hat[2, 2]
+  ) %>%
+  select(CountyName, 
+         RP.Soybeans, 
+         MSE.RP.Soybeans, 
+         ASP.Soybeans, 
+         MSE.ASP.Soybeans, 
+         BLUP.Soybeans, 
+         MSE.BLUP.Soybeans, 
+         SP.Soybeans)
+
+results.soybeans
+```
+
+-   The MSE for the RP is relatively high compared to the other predictors, this simple model just may not be as reliable. This is because it does not adjust for the difference between the observed and predicted county-level means.
+
+-   The MSE for ASP is still high but lower than MSE.RP.
+
+-   The MSE for BLUP is consistently lower than both MSE.RP and MSE.ASP, showing that BLUP provides the most reliable estimates with the smallest prediction error, which makes sense. This highlights the advantage of incorporating both fixed and random effects.
+
+-   The SP values vary widely, showing differences in the actual observed data between counties as it directly reflects the county-level data without any adjustments.
+
+## Exercise (d)
+
+```{r}
+library(maps)
+library(mapdata)
+
+# Calc total county field size by joining the tables and adding BLUP and SP
+total.field.size <- results.corn %>%
+  full_join(
+    results.soybeans,
+    by = "CountyName"
+  ) %>%
+  mutate(
+    Total.BLUP = BLUP.Corn + BLUP.Soybeans,
+    Total.SP = SP.Corn + SP.Soybeans
+  ) %>%
+  select(CountyName, Total.BLUP, Total.SP)
+total.field.size
+
+# Some preparation for plotting
+iowa.counties <- map_data("county", region = "iowa")
+iowa.counties$CountyName <- tools::toTitleCase(iowa.counties$subregion)
+plot.data <- iowa.counties %>%
+  left_join(total.field.size, by = "CountyName")
+
+# Plot BLUP estimates
+ggplot(plot.data, aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = Total.BLUP), color = "white") +
+  scale_fill_viridis_c() +
+  labs(
+    title = "Field Size (Corn + Soybeans) by BLUP",
+    fill = "Field Size"
+  )
+
+# Plot SP estimates
+ggplot(plot.data, aes(long, lat, group = group)) +
+  geom_polygon(aes(fill = Total.SP), color = "white") +
+  scale_fill_viridis_c() +
+  labs(
+    title = "Field Size (Corn + Soybeans) by Survey Data",
+    fill = "Field Size"
+  )
+
+```
+
+-   The BLUP estimates for total field size per county seem to be a bit more conservative than the SP estimates, though they are quite close in value. This is expected as BLUP adjusts for both fixed effects and random effects, so it shrinks estimates towards the overall mean. The SP estimates directly reflect the survey data without any adjustments. These estimates are purely data-driven, so it makes sense that they have a higher variability.
+
+-   Both maps show that Wright County has the highest total field size estimate, with the SP map showing an even higher estimate than the BLUP map. Both the counties Humboldt and Franklin have relatively high estimates as well, with SP showing slightly higher values than BLUP, particularly in the Franklin County. While BLUP seems to moderate the estimates, the general pattern of field sizes across the counties is mostly consistent: The larger fields are concentrated in a few key counties.
